@@ -3,6 +3,13 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.2.1] - 2026-09-24
+
+### Düzeltildi
+- `BASLAT.bat` artık arka planda kalmış eski sunucuyu kapatıp kendi klasöründeki sunucuyu başlatıyor.
+  Önceden, başka bir klasörden açılmış eski sürüm çalışıyorsa yeni sürüm yerine o görünüyordu.
+- `kiosk-server.exe` bulunmayan klasörde (kaynak kod klasörü) başlatılırsa açıklayıcı uyarı veriliyor.
+
 ## [1.2.0] - 2026-09-24
 
 ### Eklendi
