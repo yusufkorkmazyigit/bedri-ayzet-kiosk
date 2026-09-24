@@ -1,0 +1,20 @@
+# Üye verileri ASLA depoya girmez (KVKK)
+data/
+
+# Videolar büyük; depoda yalnızca dosya adı listesi durur
+videos/*
+!videos/VIDEO-ADLARI.txt
+ham-videolar/*
+!ham-videolar/BURAYA-KOYUN.txt
+
+# Derleme çıktıları
+dist/
+*.exe
+kiosk-server-linux
+ffmpeg.exe
+app-onceki/
+
+# Sistem
+Thumbs.db
+.DS_Store
+desktop.ini

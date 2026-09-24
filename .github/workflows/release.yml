@@ -1,0 +1,39 @@
+# v1.2.3 gibi bir etiket gönderildiğinde kiosk paketini derler ve GitHub Release olarak yayınlar.
+name: Sürüm yayınla
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derleyiciyi kur
+        run: sudo apt-get update -q && sudo apt-get install -y -q gcc-mingw-w64-i686 zip
+
+      - name: Paketi oluştur
+        run: scripts/paketle.sh
+
+      - name: Release oluştur
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(tr -d ' \r\n' < VERSION)"
+          # CHANGELOG.md içinden bu sürümün notlarını al
+          awk -v v="$VERSION" '$0 ~ "^## \\[?"v"\\]?" {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
+          gh release create "$GITHUB_REF_NAME" "dist/BedriAyzetKiosk-v$VERSION.zip" \
+            --title "Bedri Ayzet Kiosk v$VERSION" --notes-file notes.md
+
+      - name: Paketi yapıt olarak sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: BedriAyzetKiosk
+          path: dist/*.zip
