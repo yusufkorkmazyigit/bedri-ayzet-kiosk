@@ -3,6 +3,15 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.3.0] - 2026-09-25
+
+### Eklendi
+- Salonun yeni logosu: uygulamanın üst çubuğunda ve açılış ekranında.
+- `logo/` klasörü: ana, yatay, ikon, koyu zemin ve tek renk logo sürümleri (SVG + PNG) ve renk kodları.
+
+### Değişti
+- Uygulamanın vurgu rengi logodaki elektrik mavisi oldu; arka plan tonları lacivertle uyumlu hale getirildi.
+
 ## [1.2.1] - 2026-09-24
 
 ### Düzeltildi

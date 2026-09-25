@@ -10,7 +10,7 @@
     var s = BA.store.db.settings;
     var now = new Date();
     return '<header class="topbar">' +
-      '<div class="brand"><div class="brand__mark">' + esc(BA.initials(s.gymName)) + '</div>' +
+      '<div class="brand"><img class="brand__mark" src="img/logo/mark.svg" alt="" draggable="false">' +
       '<div class="brand__txt"><b>' + esc(s.gymName) + '</b><span>' + esc(s.gymTagline) + '</span></div></div>' +
       (center != null ? center :
         '<div class="clock"><b data-clock="time">' + BA.fmtTime(now) + '</b><span data-clock="date">' + BA.fmtLongToday(now) + '</span></div>') +
