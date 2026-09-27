@@ -38,6 +38,9 @@
       m.id = String(m.id);
       m.measurements = Array.isArray(m.measurements) ? m.measurements : [];
       m.measurements.forEach(function (x) { if (!x.id) x.id = BA.uid(); });
+      if (m.birthDate === undefined) m.birthDate = '';
+      if (m.membership === undefined) m.membership = null;
+      if (!Array.isArray(m.membershipLog)) m.membershipLog = [];
     });
     db.version = 1;
     return db;
@@ -236,6 +239,41 @@
     }
     store.db.templates.forEach(clean);
     store.db.members.forEach(function (m) { clean(m.program); });
+    store.save();
+  };
+
+  /* ------------------------------------------------------------ üyelik */
+  function logMembership(m, text) {
+    m.membershipLog = m.membershipLog || [];
+    m.membershipLog.unshift({ at: BA.todayISO(), text: text });
+    if (m.membershipLog.length > 30) m.membershipLog.length = 30;
+  }
+
+  /* Yeni üye ya da sıfırdan paket: başlangıç + ay → bitiş */
+  store.startMembership = function (m, start, months) {
+    m.membership = { start: start, end: BA.addMonths(start, months), months: months };
+    logMembership(m, months + ' aylık paket başlatıldı (' + BA.fmtDate(start) + ' – ' + BA.fmtDate(m.membership.end) + ')');
+  };
+
+  /* Paket yenileme: bitmemişse mevcut bitişten, bitmişse bugünden itibaren uzatır */
+  store.renewMembership = function (m, months) {
+    var ms = m.membership;
+    var from = ms && ms.end && BA.daysUntil(ms.end) > 0 ? ms.end : BA.todayISO();
+    var end = BA.addMonths(from, months);
+    m.membership = { start: ms && ms.end && BA.daysUntil(ms.end) > 0 ? ms.start : from, end: end, months: months };
+    logMembership(m, months + ' aylık paket eklendi, yeni bitiş ' + BA.fmtDate(end));
+    store.save();
+  };
+
+  /* Bitiş tarihini elle değiştirme (dondurma, telafi vb.) */
+  store.setMembershipEnd = function (m, end, note) {
+    var ms = m.membership || { start: BA.todayISO(), months: null };
+    var old = ms.end;
+    ms.end = end;
+    m.membership = ms;
+    var diff = old ? Math.round((BA.parseISO(end) - BA.parseISO(old)) / 864e5) : null;
+    logMembership(m, 'Bitiş ' + (old ? BA.fmtDate(old) + ' → ' : '') + BA.fmtDate(end) +
+      (diff ? ' (' + (diff > 0 ? '+' : '') + diff + ' gün)' : '') + (note ? ' · ' + note : ''));
     store.save();
   };
 

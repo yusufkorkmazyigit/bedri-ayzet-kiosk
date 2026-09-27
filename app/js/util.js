@@ -37,6 +37,59 @@
   };
   BA.fmtTime = function (d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
 
+  /* ------------------------------------------------------------ tarih hesapları (yerel saat, "YYYY-AA-GG") */
+  BA.parseISO = function (iso) {
+    var p = String(iso || '').split('-');
+    return p.length === 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : null;
+  };
+  BA.toISO = function (d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  };
+  BA.addDays = function (iso, n) {
+    var d = BA.parseISO(iso); if (!d) return '';
+    d.setDate(d.getDate() + n);
+    return BA.toISO(d);
+  };
+  /* Ay ekler; ay sonu taşmasını düzeltir (31 Oca + 1 ay → 28/29 Şub) */
+  BA.addMonths = function (iso, n) {
+    var d = BA.parseISO(iso); if (!d) return '';
+    var day = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + n);
+    var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+    return BA.toISO(d);
+  };
+  /* Bugünden hedef tarihe kalan gün (geçmişse negatif) */
+  BA.daysUntil = function (iso) {
+    var d = BA.parseISO(iso), t = BA.parseISO(BA.todayISO());
+    return d ? Math.round((d - t) / 864e5) : null;
+  };
+  BA.age = function (m) {
+    var b = BA.parseISO(m && m.birthDate);
+    if (!b) return m && m.birthYear ? new Date().getFullYear() - m.birthYear : null;
+    var t = new Date(), a = t.getFullYear() - b.getFullYear();
+    if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--;
+    return a;
+  };
+  /* Bugün doğum günü mü? (29 Şubat doğumlular artık olmayan yılda 28 Şubat'ta kutlanır) */
+  BA.isBirthday = function (m) {
+    var b = BA.parseISO(m && m.birthDate); if (!b) return false;
+    var t = new Date(), bm = b.getMonth(), bd = b.getDate();
+    if (bm === 1 && bd === 29 && new Date(t.getFullYear(), 1, 29).getMonth() !== 1) bd = 28;
+    return t.getMonth() === bm && t.getDate() === bd;
+  };
+  /* Üyelik durumu: none | ok | soon (≤7 gün) | expired */
+  BA.membershipStatus = function (m) {
+    var ms = m && m.membership;
+    if (!ms || !ms.end) return { key: 'none', label: 'Üyelik girilmedi', days: null };
+    var left = BA.daysUntil(ms.end);
+    if (left < 0) return { key: 'expired', label: (-left) + ' gün önce bitti', days: left };
+    if (left === 0) return { key: 'soon', label: 'Bugün bitiyor', days: 0 };
+    if (left <= 7) return { key: 'soon', label: left + ' gün kaldı', days: left };
+    return { key: 'ok', label: left + ' gün kaldı', days: left };
+  };
+  BA.PACKAGES = [1, 3, 6, 12];
+
   /* "72,5" / "72.5" → 72.5 ; boş/geçersiz → null */
   BA.num = function (v) {
     if (v == null) return null;
@@ -143,6 +196,8 @@
     download: '<path d="M12 4v12M6 10l6 6 6-6M4 20h16"/>',
     copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    cake: '<path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16c1.5 1.2 3 1.2 4.5 0s3-1.2 4.5 0 3 1.2 5 0"/><path d="M12 12V8"/><path d="M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     dumbbell: '<path d="M2 12h3M19 12h3M5 8v8M19 8v8M8 6v12M16 6v12M8 12h8"/>',
     /* bölge ikonları */
     chest: '<path d="M12 5v14"/><path d="M12 7c-2-1.5-6-1.5-8 .5 0 5 2.5 8 8 8"/><path d="M12 7c2-1.5 6-1.5 8 .5 0 5-2.5 8-8 8"/>',

@@ -209,8 +209,11 @@
       return x.toISOString().slice(0, 10);
     }
     return {
-      id: '1001', name: 'Demo Üye', phone: '', gender: 'Erkek', birthYear: 1998,
+      id: '1001', name: 'Demo Üye', phone: '', gender: 'Erkek',
+      birthDate: '1998' + BA.todayISO().slice(4), // örnek kayıtta doğum günü özelliği görünsün
       goal: 'Kilo verme', joined: ago(92), note: 'Örnek kayıt — eğitmen panelinden silebilirsiniz.',
+      membership: { start: ago(92), end: BA.addMonths(ago(92), 6), months: 6 },
+      membershipLog: [{ at: ago(92), text: '6 aylık paket başlatıldı' }],
       program: { name: prog.name, note: prog.note, assignedAt: ago(90), templateId: prog.id, days: prog.days },
       measurements: [
         { id: BA.uid(), date: ago(90), weight: 92.4, height: 181, waist: 101, chest: 108, arm: 35, hip: 106, thigh: 62, fat: 27 },

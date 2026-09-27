@@ -11,8 +11,13 @@
     var ms = BA.store.sortedMeasurements(m);
 
     var first = String(m.name || '').split(' ')[0];
-    var center = '<div class="greet"><b>Hoş geldin, ' + esc(first) + '</b>' +
-      '<span>Üye No ' + esc(m.id) + (m.goal ? ' · Hedef: ' + esc(m.goal) : '') + '</span></div>';
+    var bday = BA.isBirthday(m);
+    var st = BA.membershipStatus(m);
+    var memb = m.membership && m.membership.end ?
+      ' · <i class="stat stat--' + st.key + '">Üyelik: ' + (st.key === 'expired' ? 'bitti' : BA.fmtDate(m.membership.end, true) + ', ' + esc(st.label)) + '</i>' : '';
+    var center = '<div class="greet' + (bday ? ' greet--bday' : '') + '">' +
+      (bday ? '<b>' + icon('cake') + 'İyi ki doğdun, ' + esc(first) + '!</b>' : '<b>Hoş geldin, ' + esc(first) + '</b>') +
+      '<span>Üye No ' + esc(m.id) + (m.goal ? ' · Hedef: ' + esc(m.goal) : '') + memb + '</span></div>';
     var right = '<div class="session" data-ref="session" title="Otomatik çıkış">' + icon('clock') + '<span data-ref="left"></span></div>' +
       '<button class="btn btn--ghost" data-act="logout">' + icon('logout') + '<span>Çıkış</span></button>';
 

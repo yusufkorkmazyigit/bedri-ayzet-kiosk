@@ -48,30 +48,59 @@
   /* ================================================================ ÜYELER */
   PAGES.members = function (main, params) {
     var q = params.q || '';
-    main.innerHTML = pageHead('Üyeler', S().db.members.length + ' kayıtlı üye',
+    var filter = params.filter || 'all';
+    var all = S().db.members;
+    var soon = all.filter(function (m) { return BA.membershipStatus(m).key === 'soon'; }).length;
+    var expired = all.filter(function (m) { return BA.membershipStatus(m).key === 'expired'; }).length;
+    var bdays = all.filter(BA.isBirthday).length;
+    var FILTERS = [
+      { id: 'all', label: 'Tümü', n: all.length },
+      { id: 'soon', label: 'Üyeliği bitiyor', n: soon },
+      { id: 'expired', label: 'Üyeliği bitmiş', n: expired },
+      { id: 'bday', label: 'Bugün doğum günü', n: bdays }
+    ];
+
+    main.innerHTML = pageHead('Üyeler', all.length + ' kayıtlı üye' +
+        (soon ? ' · <b class="txt-warn">' + soon + ' üyelik 7 gün içinde bitiyor</b>' : '') +
+        (bdays ? ' · <b class="txt-acc">' + bdays + ' doğum günü</b>' : ''),
         '<button class="btn btn--primary" data-act="newMember">' + icon('plus') + '<span>Yeni Üye</span></button>') +
       '<div class="searchbar">' + icon('search') + '<input type="text" data-ref="q" placeholder="İsim veya üye no ile ara" value="' + esc(q) + '"></div>' +
+      '<div class="chipbar" data-ref="chips"></div>' +
       '<div class="mlist" data-ref="list"></div>';
     var listEl = main.querySelector('[data-ref=list]');
+    var chipsEl = main.querySelector('[data-ref=chips]');
     paint();
 
     function paint() {
+      chipsEl.innerHTML = FILTERS.map(function (f) {
+        return '<button class="chip' + (f.id === filter ? ' is-on' : '') + '" data-act="filter" data-id="' + f.id + '">' +
+          esc(f.label) + (f.id !== 'all' && f.n ? ' <em class="chip__n">' + f.n + '</em>' : '') + '</button>';
+      }).join('');
       var nq = BA.norm(q);
-      var list = S().db.members.filter(function (m) {
-        return !nq || BA.norm(m.name).indexOf(nq) > -1 || m.id.indexOf(q) > -1;
-      }).sort(function (a, b) { return a.name.localeCompare(b.name, 'tr'); });
+      var list = all.filter(function (m) {
+        if (nq && BA.norm(m.name).indexOf(nq) < 0 && m.id.indexOf(q) < 0) return false;
+        if (filter === 'bday') return BA.isBirthday(m);
+        if (filter === 'soon' || filter === 'expired') return BA.membershipStatus(m).key === filter;
+        return true;
+      }).sort(function (a, b) {
+        // bitmek üzere olanlar önce, sonra isim
+        if (filter === 'soon' || filter === 'expired') return BA.membershipStatus(a).days - BA.membershipStatus(b).days;
+        return a.name.localeCompare(b.name, 'tr');
+      });
       if (!list.length) {
-        listEl.innerHTML = '<div class="empty">' + icon('users') + '<b>' + (q ? 'Eşleşen üye yok' : 'Henüz üye yok') + '</b>' +
-          '<span>' + (q ? 'Aramayı değiştirmeyi deneyin.' : '“Yeni Üye” ile ilk kaydı oluşturun.') + '</span></div>';
+        listEl.innerHTML = '<div class="empty">' + icon('users') + '<b>' + (q || filter !== 'all' ? 'Eşleşen üye yok' : 'Henüz üye yok') + '</b>' +
+          '<span>' + (q || filter !== 'all' ? 'Aramayı ya da filtreyi değiştirmeyi deneyin.' : '“Yeni Üye” ile ilk kaydı oluşturun.') + '</span></div>';
         return;
       }
       listEl.innerHTML = list.map(function (m) {
-        var ms = S().sortedMeasurements(m), last = ms[ms.length - 1];
+        var st = BA.membershipStatus(m);
         return '<button class="mrow" data-act="openMember" data-id="' + esc(m.id) + '">' +
           '<span class="avatar">' + esc(BA.initials(m.name)) + '</span>' +
-          '<span class="mrow__name"><b>' + esc(m.name) + '</b><span>No ' + esc(m.id) + (m.goal ? ' · ' + esc(m.goal) : '') + '</span></span>' +
+          '<span class="mrow__name"><b>' + esc(m.name) + (BA.isBirthday(m) ? ' <i class="bday" title="Bugün doğum günü">' + icon('cake') + '</i>' : '') + '</b>' +
+            '<span>No ' + esc(m.id) + (m.goal ? ' · ' + esc(m.goal) : '') + '</span></span>' +
           '<span class="mrow__col"><small>Program</small>' + (m.program ? esc(m.program.name) : '<em>Atanmadı</em>') + '</span>' +
-          '<span class="mrow__col"><small>Son ölçüm</small>' + (last ? BA.fmtDate(last.date) : '<em>Yok</em>') + '</span>' +
+          '<span class="mrow__col"><small>Üyelik bitişi</small>' + (m.membership && m.membership.end ?
+            BA.fmtDate(m.membership.end) + ' <i class="stat stat--' + st.key + '">' + esc(st.label) + '</i>' : '<em>Girilmedi</em>') + '</span>' +
           icon('arrow', 'mrow__go') +
         '</button>';
       }).join('');
@@ -80,7 +109,8 @@
     return {
       actions: {
         newMember: function () { memberForm(null); },
-        openMember: function (el) { BA.app.go('trainer', { tab: 'member', id: el.getAttribute('data-id') }); }
+        openMember: function (el) { BA.app.go('trainer', { tab: 'member', id: el.getAttribute('data-id') }); },
+        filter: function (el) { filter = el.getAttribute('data-id'); BA.app.params.filter = filter; paint(); }
       },
       onInput: function (ev) {
         if (ev.target.getAttribute('data-ref') === 'q') { q = ev.target.value; BA.app.params.q = q; paint(); }
@@ -88,12 +118,15 @@
     };
   };
 
-  /* Yeni / düzenle üye formu */
+  /* Yeni / düzenle üye formu. Üyelik paketi yalnızca yeni kayıtta burada girilir;
+     sonradan üye sayfasındaki "Üyelik" kartından yönetilir. */
   function memberForm(m) {
     var isNew = !m;
-    var d = m || { id: S().nextMemberId(), name: '', phone: '', gender: 'Erkek', birthYear: '', goal: BA.GOALS[0], joined: BA.todayISO(), note: '' };
+    var d = m || { id: S().nextMemberId(), name: '', phone: '', gender: 'Erkek', birthDate: '', goal: BA.GOALS[0], joined: BA.todayISO(), note: '' };
     var tplOpts = [{ value: '', label: 'Şimdilik atama' }].concat(S().db.templates.map(function (t) { return { value: t.id, label: t.name + ' · ' + (t.level || '') }; }));
+    var pkgOpts = BA.PACKAGES.map(function (n) { return { value: n, label: n + ' aylık' }; }).concat([{ value: 0, label: 'Paket girme' }]);
     var md = BA.modal({
+      cls: 'modal--lg',
       title: isNew ? 'Yeni Üye' : 'Üyeyi Düzenle',
       subtitle: isNew ? 'Üye numarası, üyenin kiosktan giriş yapacağı koddur.' : 'No ' + m.id,
       body: '<form class="form grid2" onsubmit="return false">' +
@@ -101,10 +134,15 @@
         BA.field('Ad Soyad', 'name', d.name, { ph: 'Örn. Ahmet Yılmaz' }) +
         BA.field('Telefon', 'phone', d.phone, { numeric: true, ph: '05xx xxx xx xx', max: 16 }) +
         BA.field('Cinsiyet', 'gender', d.gender, { options: ['Erkek', 'Kadın', 'Belirtilmemiş'] }) +
-        BA.field('Doğum yılı', 'birthYear', d.birthYear, { numeric: true, max: 4 }) +
+        '<label class="field"><span>Doğum tarihi</span><input type="date" name="birthDate" value="' + esc(d.birthDate || '') + '" max="' + BA.todayISO() + '"></label>' +
         BA.field('Hedef', 'goal', d.goal, { options: BA.GOALS }) +
-        '<label class="field"><span>Kayıt tarihi</span><input type="date" name="joined" value="' + esc(d.joined) + '"></label>' +
-        (isNew ? BA.field('Başlangıç programı', 'tpl', 'tpl-fb-a', { options: tplOpts }) : '<span></span>') +
+        (isNew ?
+          '<div class="formsec span2">' + icon('calendar') + '<b>Üyelik paketi</b></div>' +
+          BA.field('Paket', 'months', 1, { options: pkgOpts }) +
+          '<label class="field"><span>Başlangıç tarihi</span><input type="date" name="start" value="' + BA.todayISO() + '"></label>' +
+          '<p class="formhint span2" data-ref="endHint"></p>' +
+          BA.field('Başlangıç programı', 'tpl', 'tpl-fb-a', { options: tplOpts, cls: 'span2' }) :
+          '<label class="field"><span>Kayıt tarihi</span><input type="date" name="joined" value="' + esc(d.joined || '') + '"></label><span></span>') +
         BA.field('Eğitmen notu', 'note', d.note, { textarea: true, rows: 2, cls: 'span2', ph: 'Sakatlık, dikkat edilecekler vb.' }) +
       '</form>',
       foot: '<button class="btn btn--ghost" data-act="__close">Vazgeç</button><button class="btn btn--primary" data-act="save">' + icon('check') + 'Kaydet</button>',
@@ -113,12 +151,17 @@
           var f = BA.formData(md.body);
           if (!/^\d{3,6}$/.test(f.id)) return BA.toast('Üye no 3–6 haneli bir sayı olmalı.', 'err');
           if (!f.name) return BA.toast('Ad soyad gerekli.', 'err');
+          if (f.birthDate && f.birthDate > BA.todayISO()) return BA.toast('Doğum tarihi ileri bir tarih olamaz.', 'err');
           var clash = S().member(f.id);
           if (clash && (isNew || f.id !== m.id)) return BA.toast('Bu üye no zaten ' + clash.name + ' için kullanılıyor.', 'err');
-          var rec = Object.assign({}, m || { measurements: [], program: null }, {
+          var months = parseInt(f.months, 10) || 0;
+          if (isNew && months && !f.start) return BA.toast('Üyelik başlangıç tarihi gerekli.', 'err');
+          var rec = Object.assign({}, m || { measurements: [], program: null, membership: null, membershipLog: [] }, {
             id: f.id, name: f.name, phone: f.phone, gender: f.gender, goal: f.goal,
-            birthYear: f.birthYear ? parseInt(f.birthYear, 10) || '' : '', joined: f.joined, note: f.note
+            birthDate: f.birthDate, joined: isNew ? (f.start || BA.todayISO()) : f.joined, note: f.note
           });
+          delete rec.birthYear;
+          if (isNew && months) S().startMembership(rec, f.start, months);
           S().saveMember(rec, m && m.id);
           if (isNew && f.tpl) S().assignTemplate(rec, f.tpl);
           md.close();
@@ -127,6 +170,16 @@
         }
       }
     });
+    if (isNew) {
+      var hint = md.el.querySelector('[data-ref=endHint]');
+      var upd = function () {
+        var f = BA.formData(md.body), n = parseInt(f.months, 10) || 0;
+        hint.innerHTML = n && f.start ? 'Üyelik bitişi: <b>' + BA.fmtDate(BA.addMonths(f.start, n)) + '</b>. Gerekirse sonra üye sayfasından değiştirilebilir.' : 'Üyelik tarihi girilmeyecek.';
+      };
+      md.body.addEventListener('change', upd);
+      md.body.addEventListener('input', upd);
+      upd();
+    }
   }
 
   /* ================================================================ ÜYE DETAYI */
@@ -164,13 +217,16 @@
       '<header class="mhead">' +
         '<span class="avatar avatar--lg">' + esc(BA.initials(m.name)) + '</span>' +
         '<div class="mhead__txt"><h1>' + esc(m.name) + '</h1>' +
-          '<p><span class="idchip">No ' + esc(m.id) + '</span>' + [m.goal, m.gender, m.birthYear ? (new Date().getFullYear() - m.birthYear) + ' yaş' : '', m.phone, m.joined ? 'Kayıt ' + BA.fmtDate(m.joined) : '']
+          '<p><span class="idchip">No ' + esc(m.id) + '</span>' + [m.goal, m.gender, BA.age(m) != null ? BA.age(m) + ' yaş' : '',
+              m.birthDate ? 'Doğum ' + BA.fmtDate(m.birthDate) : '', m.phone, m.joined ? 'Kayıt ' + BA.fmtDate(m.joined) : '']
             .filter(Boolean).map(esc).join(' · ') + '</p>' +
+          (BA.isBirthday(m) ? '<p class="bday-banner">' + icon('cake') + 'Bugün ' + esc(m.name.split(' ')[0]) + '’in doğum günü' + (BA.age(m) ? ' — ' + BA.age(m) + ' yaşına girdi' : '') + '</p>' : '') +
           (m.note ? '<p class="note">' + icon('edit') + esc(m.note) + '</p>' : '') +
         '</div>' +
         '<div class="mhead__act"><button class="btn btn--ghost" data-act="editMember">' + icon('edit') + 'Düzenle</button>' +
         '<button class="btn btn--ghost btn--danger-ghost" data-act="delMember">' + icon('trash') + 'Sil</button></div>' +
       '</header>' +
+      membershipCard(m) +
       '<div class="cols">' +
         '<section class="card">' +
           '<header class="card__head"><h2>Fitness Programı</h2></header>' +
@@ -194,6 +250,8 @@
     return {
       actions: {
         editMember: function () { memberForm(m); },
+        editEnd: function () { endForm(m, reload); },
+        renew: function () { renewForm(m, reload); },
         delMember: function () {
           BA.confirm(m.name + ' ve tüm ölçüm geçmişi silinecek. Bu işlem geri alınamaz.', { ok: 'Üyeyi sil', danger: true }).then(function (ok) {
             if (!ok) return;
@@ -232,6 +290,112 @@
       return m.measurements.filter(function (x) { return x.id === id; })[0];
     }
   };
+
+  /* Üyelik kartı: durum, tarihler, son hareketler */
+  function membershipCard(m) {
+    var ms = m.membership, st = BA.membershipStatus(m);
+    var log = (m.membershipLog || []).slice(0, 3);
+    return '<section class="card mcard mcard--' + st.key + '">' +
+      '<div class="mcard__main">' +
+        '<div class="mcard__ico">' + icon('calendar') + '</div>' +
+        '<div class="mcard__txt"><small>Üyelik</small>' +
+          (ms && ms.end ?
+            '<b>' + BA.fmtDate(ms.start) + ' – ' + BA.fmtDate(ms.end) + '</b>' +
+            '<span>' + (ms.months ? ms.months + ' aylık paket · ' : '') + '<i class="stat stat--' + st.key + '">' + esc(st.label) + '</i></span>' :
+            '<b>Üyelik tarihi girilmedi</b><span>Paket ekleyerek başlangıç ve bitiş tarihini oluşturun.</span>') +
+        '</div>' +
+        '<div class="mcard__act">' +
+          (ms && ms.end ? '<button class="btn btn--ghost" data-act="editEnd">' + icon('edit') + 'Bitişi düzenle</button>' : '') +
+          '<button class="btn btn--primary" data-act="renew">' + icon('plus') + (ms && ms.end ? 'Paket ekle' : 'Paket başlat') + '</button>' +
+        '</div>' +
+      '</div>' +
+      (log.length ? '<ul class="mlog">' + log.map(function (l) {
+        return '<li><time>' + BA.fmtDate(l.at) + '</time>' + esc(l.text) + '</li>';
+      }).join('') + '</ul>' : '') +
+    '</section>';
+  }
+
+  /* Bitiş tarihini düzenleme: dondurma, telafi vb. için hızlı gün ekleme */
+  function endForm(m, done) {
+    var cur = m.membership.end;
+    var md = BA.modal({
+      cls: 'modal--sm',
+      title: 'Üyelik bitişini düzenle',
+      subtitle: m.name + ' · şu anki bitiş ' + BA.fmtDate(cur),
+      body: '<form class="form" onsubmit="return false">' +
+        '<div class="quick">' + [7, 10, 15, 30].map(function (n) {
+          return '<button type="button" class="chip" data-act="add" data-n="' + n + '">+' + n + ' gün</button>';
+        }).join('') + '</div>' +
+        '<label class="field"><span>Yeni bitiş tarihi</span><input type="date" name="end" value="' + esc(cur) + '"></label>' +
+        '<p class="formhint" data-ref="diff"></p>' +
+        BA.field('Sebep (isteğe bağlı)', 'note', '', { ph: 'Örn. 10 gün dondurma' }) +
+      '</form>',
+      foot: '<button class="btn btn--ghost" data-act="__close">Vazgeç</button><button class="btn btn--primary" data-act="save">' + icon('check') + 'Kaydet</button>',
+      actions: {
+        add: function (el) {
+          var inp = md.body.querySelector('[name=end]'), n = +el.getAttribute('data-n');
+          inp.value = BA.addDays(inp.value || cur, n);
+          var note = md.body.querySelector('[name=note]');
+          if (!note.value) note.value = n + ' gün dondurma';
+          diff();
+        },
+        save: function () {
+          var f = BA.formData(md.body);
+          if (!f.end) return BA.toast('Bitiş tarihi gerekli.', 'err');
+          if (m.membership.start && f.end < m.membership.start) return BA.toast('Bitiş, başlangıçtan önce olamaz.', 'err');
+          if (f.end === cur) return md.close();
+          S().setMembershipEnd(m, f.end, f.note);
+          md.close();
+          BA.toast('Üyelik bitişi ' + BA.fmtDate(f.end) + ' olarak güncellendi.', 'ok');
+          done();
+        }
+      }
+    });
+    var diffEl = md.el.querySelector('[data-ref=diff]');
+    function diff() {
+      var v = md.body.querySelector('[name=end]').value;
+      var n = v ? Math.round((BA.parseISO(v) - BA.parseISO(cur)) / 864e5) : 0;
+      diffEl.textContent = n ? (n > 0 ? '+' : '') + n + ' gün değişiklik' : '';
+    }
+    md.body.addEventListener('change', diff);
+  }
+
+  /* Paket ekleme: aktif üyelikte bitişten, bitmiş üyelikte bugünden itibaren uzatır */
+  function renewForm(m, done) {
+    var ms = m.membership, active = ms && ms.end && BA.daysUntil(ms.end) > 0;
+    var from = active ? ms.end : BA.todayISO();
+    var md = BA.modal({
+      cls: 'modal--sm',
+      title: ms && ms.end ? 'Paket ekle' : 'Paket başlat',
+      subtitle: m.name,
+      body: '<form class="form" onsubmit="return false">' +
+        '<div class="quick">' + BA.PACKAGES.map(function (n, i) {
+          return '<button type="button" class="chip' + (i === 0 ? ' is-on' : '') + '" data-act="pick" data-n="' + n + '">' + n + ' ay</button>';
+        }).join('') + '</div>' +
+        '<p class="formhint" data-ref="hint"></p>' +
+      '</form>',
+      foot: '<button class="btn btn--ghost" data-act="__close">Vazgeç</button><button class="btn btn--primary" data-act="save">' + icon('check') + 'Ekle</button>',
+      actions: {
+        pick: function (el) {
+          months = +el.getAttribute('data-n');
+          md.el.querySelectorAll('[data-act=pick]').forEach(function (b) { b.classList.toggle('is-on', b === el); });
+          hint();
+        },
+        save: function () {
+          S().renewMembership(m, months);
+          md.close();
+          BA.toast(months + ' aylık paket eklendi.', 'ok');
+          done();
+        }
+      }
+    });
+    var months = BA.PACKAGES[0];
+    function hint() {
+      md.el.querySelector('[data-ref=hint]').innerHTML = (active ? 'Mevcut bitişten (' + BA.fmtDate(from) + ') itibaren uzatılır.' : 'Bugünden itibaren başlar.') +
+        '<br>Yeni bitiş: <b>' + BA.fmtDate(BA.addMonths(from, months)) + '</b>';
+    }
+    hint();
+  }
 
   /* Ölçüm formu — yeni kayıtta boy bir önceki ölçümden gelir, diğerleri ipucu olarak gösterilir */
   function measForm(m, rec, done) {

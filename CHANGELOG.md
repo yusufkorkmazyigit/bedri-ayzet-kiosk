@@ -3,6 +3,18 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.4.0] - 2026-09-27
+
+### Eklendi
+- Üyelere doğum tarihi. Doğum gününde üye ekranında "İyi ki doğdun" mesajı, eğitmen panelinde pasta simgesi ve "Bugün doğum günü" filtresi.
+- Üyelik paketi: yeni üye kaydında paket süresi (1/3/6/12 ay) ve başlangıç tarihi girilir, bitiş tarihi otomatik hesaplanır.
+- Üye sayfasında "Üyelik" kartı: kalan gün, bitişi düzenleme (+7/+10/+15/+30 gün hızlı butonlarıyla, dondurma vb.), paket ekleme ve değişiklik geçmişi.
+- Üye listesinde üyelik bitişi sütunu ve "Üyeliği bitiyor" (7 gün) / "Üyeliği bitmiş" filtreleri.
+- Üye ekranında üyelik bitiş bilgisi.
+
+### Değişti
+- "Doğum yılı" alanı "Doğum tarihi" oldu; yaş doğum tarihinden hesaplanır (eski kayıtlarda doğum yılı korunur).
+
 ## [1.3.0] - 2026-09-25
 
 ### Eklendi

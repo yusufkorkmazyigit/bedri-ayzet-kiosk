@@ -475,7 +475,7 @@ body.osk-open .admin__main { padding-bottom: calc(var(--osk-h) + 2rem); }
 
 .mlist { display: flex; flex-direction: column; gap: .5rem; }
 .mrow {
-  display: grid; grid-template-columns: 3rem 1.6fr 1.2fr 1fr 1.5rem; align-items: center; gap: 1rem;
+  display: grid; grid-template-columns: 3rem 1.5fr 1fr 1.4fr 1.5rem; align-items: center; gap: 1rem;
   padding: .8rem 1.1rem; border-radius: var(--r);
   background: var(--s1); border: 1px solid var(--line);
   transition: border-color .15s;
@@ -666,3 +666,40 @@ html.lite .modal__card, html.lite .toast { box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* ------------------------------------------------------------------ ÜYELİK & DOĞUM GÜNÜ (v1.4) */
+.stat { font-style: normal; font-size: .78rem; font-weight: 700; padding: .1rem .55rem; border-radius: 99px; white-space: nowrap; background: var(--s3); color: var(--tx2); }
+.stat--ok { color: var(--good); background: rgba(94, 224, 143, .12); }
+.stat--soon { color: var(--bad); background: rgba(246, 173, 60, .14); }
+.stat--expired { color: var(--danger); background: rgba(255, 92, 97, .14); }
+.txt-warn { color: var(--bad); font-weight: 700; }
+.txt-acc { color: var(--acc); font-weight: 700; }
+.chip__n { font-style: normal; margin-left: .35rem; padding: 0 .45rem; border-radius: 99px; background: var(--s3); color: var(--tx); font-size: .8rem; }
+.chip.is-on .chip__n { background: rgba(6, 17, 31, .2); color: var(--acc-ink); }
+.bday { display: inline-flex; vertical-align: -.15em; color: var(--acc); font-style: normal; }
+.bday .ico { width: 1.05em; height: 1.05em; }
+.bday-banner { display: inline-flex; align-items: center; gap: .5rem; align-self: flex-start; padding: .45rem .9rem; border-radius: 99px; background: var(--acc-dim); color: var(--acc); font-weight: 700; font-size: .92rem; }
+.greet--bday b { display: inline-flex; align-items: center; gap: .45rem; color: var(--acc); }
+.greet .stat { font-size: .78rem; }
+
+.mcard { gap: .9rem; border-left: 4px solid var(--line2); }
+.mcard--ok { border-left-color: var(--good); }
+.mcard--soon { border-left-color: var(--bad); }
+.mcard--expired { border-left-color: var(--danger); }
+.mcard__main { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.mcard__ico { width: 3rem; height: 3rem; border-radius: 12px; display: grid; place-items: center; background: var(--s3); color: var(--acc); flex: none; }
+.mcard__txt { flex: 1; min-width: 14rem; display: flex; flex-direction: column; gap: .15rem; }
+.mcard__txt small { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.mcard__txt b { font-size: 1.2rem; }
+.mcard__txt span { display: flex; align-items: center; gap: .4rem; color: var(--tx2); font-size: .9rem; }
+.mcard__act { display: flex; gap: .6rem; }
+.mlog { display: flex; flex-direction: column; gap: .3rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+.mlog li { font-size: .85rem; color: var(--tx2); }
+.mlog time { display: inline-block; min-width: 6.5rem; color: var(--mut); font-variant-numeric: tabular-nums; }
+
+.formsec { display: flex; align-items: center; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--line); color: var(--acc); }
+.formsec b { color: var(--tx); }
+.formhint { font-size: .88rem; color: var(--tx2); margin: -.3rem 0 0; min-height: 1.2em; }
+.formhint b { color: var(--acc); }
+.quick { display: flex; gap: .5rem; flex-wrap: wrap; }
+.mrow__col .stat { align-self: flex-start; margin-top: .15rem; }
