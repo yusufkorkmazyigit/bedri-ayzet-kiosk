@@ -69,7 +69,14 @@
     var k = b.getAttribute('data-k');
     if (k === '⇧') { kb.shift = !kb.shift; build(kb.mode); return; }
     if (k === '⌫') return backspace();
-    if (k === '✓') { if (kb.target) kb.target.blur(); kb.hide(); return; }
+    if (k === '✓') {
+      var t = kb.target;
+      if (t) t.blur();
+      kb.hide();
+      // data-enter taşıyan alanlarda "Tamam" = Enter (ör. programa kodla hızlı ekleme)
+      if (t && t.hasAttribute('data-enter')) t.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      return;
+    }
     insert(kb.shift ? k.toLocaleUpperCase('tr') : k);
     if (kb.shift) { kb.shift = false; build(kb.mode); }
   }

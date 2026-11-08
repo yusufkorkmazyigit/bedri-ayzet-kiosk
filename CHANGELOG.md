@@ -3,6 +3,21 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.6.0] - 2026-11-08
+
+### Eklendi
+- Salon hareket kodları (A1,1 gibi): harekete kod alanı, esnek yazım (`A1,1` = `A1.1` = `a1 1`), listelerde kod rozeti ve kod sırasına göre sıralama.
+- Ana ekranda **Kodla Ara**: harf + rakam tuşlarıyla kod yazılır, eşleşen hareketler anında listelenir, video doğrudan açılır.
+- **Kod listesi ekle**: hocanın listesi tek seferde içe aktarılır ("A1,1 OMUZ YANA AÇIŞ" satırları veya Excel'den iki sütun); harf → bölge eşleştirmesi, önizleme, hatalı/tekrar eden satır uyarısı.
+- Program düzenleyicide kodla hızlı ekleme: `A1,1` ya da `A1,1 3x12` yazıp Enter. Hareket seçicide kod/ad araması.
+- Program çıktısı: üye sayfasında **Yazdır** (A4, kodlu tablo).
+- Ölçüm kontrolü: önceki ölçüme göre olağandışı farkta (ör. 36 yerine 3,6) kaydetmeden önce onay sorulur.
+- Kurulum uyarıları: varsayılan PIN ve Demo Üye duruyorsa eğitmen panelinde uyarı ve tek dokunuşla düzeltme.
+
+### Düzeltildi
+- Sunucu: aynı anda gelen kayıt istekleri artık aynı geçici dosyayı paylaşmıyor; okuma/yazma kilitle sıraya giriyor (ağ modu için hazırlık). Windows'ta dosya geçici olarak kilitliyse yer değiştirme birkaç kez yeniden denenir.
+- Sunucu: HEAD isteklerinde gövde gönderilmiyor.
+
 ## [1.5.0] - 2026-11-08
 
 ### Eklendi

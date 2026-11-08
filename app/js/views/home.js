@@ -22,6 +22,7 @@
     var region = params && params.region ? BA.regionById(params.region) : null;
 
     var auth =
+      '<button class="btn btn--ghost btn--code" data-act="codeSearch">' + icon('search') + '<span>Kodla Ara</span></button>' +
       '<button class="btn btn--ghost" data-act="trainerLogin">' + icon('whistle') + '<span>Eğitmen Girişi</span></button>' +
       '<button class="btn btn--primary" data-act="memberLogin">' + icon('user') + '<span>Üye Girişi</span></button>';
 
@@ -33,6 +34,7 @@
         region: function (el) { BA.app.go('home', { region: el.getAttribute('data-id') }); },
         backHome: function () { BA.app.go('home'); },
         ex: function (el) { BA.showExercise(el.getAttribute('data-id')); },
+        codeSearch: function () { BA.codePad(); },
         memberLogin: memberLogin,
         trainerLogin: trainerLogin
       }
@@ -74,7 +76,7 @@
     var badge = '<span class="excard__play' + (has === false ? ' is-off' : '') + '">' + icon(has === false ? 'film' : 'play') + '</span>';
     return '<button class="excard" data-act="ex" data-id="' + esc(ex.id) + '">' +
       (photo ? '<span class="excard__thumb"><img src="' + esc(photo) + '" alt="" loading="lazy" decoding="async">' + badge + '</span>' : badge) +
-      '<span class="excard__body"><b>' + esc(ex.name) + '</b>' +
+      '<span class="excard__body"><b>' + BA.codeChip(ex) + esc(ex.name) + '</b>' +
         '<span class="chips"><i>' + esc(ex.equipment || '—') + '</i><i class="lvl lvl--' + BA.LEVELS.indexOf(ex.level) + '">' + esc(ex.level || '') + '</i></span>' +
       '</span>' +
       '<span class="excard__cta">' + (has === false ? 'Anlatım' : 'İzle') + '</span>' +

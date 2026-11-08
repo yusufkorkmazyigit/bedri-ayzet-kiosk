@@ -15,8 +15,10 @@
     var tab = params.tab || 'members';
     var navOn = tab === 'member' ? 'members' : tab === 'editor' ? (params.kind === 'template' ? 'templates' : 'members') : tab;
 
+    var warns = setupWarnings();
     root.innerHTML = '<div class="screen">' +
-      BA.topbar('<button class="btn btn--ghost" data-act="logout">' + icon('logout') + '<span>Çıkış</span></button>',
+      BA.topbar((warns.length ? '<button class="btn btn--warn" data-act="warns">' + icon('alert') + '<span>' + warns.length + ' uyarı</span></button>' : '') +
+        '<button class="btn btn--ghost" data-act="logout">' + icon('logout') + '<span>Çıkış</span></button>',
         '<div class="greet"><b>Eğitmen Paneli</b><span>' + (S().mode === 'server' ? 'Veriler bu bilgisayara kaydediliyor' : 'Yerel tarayıcı modu') + '</span></div>') +
       '<div class="admin">' +
         '<nav class="side">' + NAV.map(function (n) {
@@ -31,12 +33,41 @@
     return {
       actions: Object.assign({
         logout: function () { BA.app.logout(); },
-        nav: function (el) { BA.app.go('trainer', { tab: el.getAttribute('data-tab') }); }
+        nav: function (el) { BA.app.go('trainer', { tab: el.getAttribute('data-tab') }); },
+        warns: function () { showWarnings(warns); }
       }, page.actions || {}),
       onInput: page.onInput,
       onChange: page.onChange
     };
   };
+
+  /* Teslim/kurulum uyarıları: varsayılan PIN ve örnek üye unutulmasın */
+  function setupWarnings() {
+    var out = [], s = S().db.settings, demo = S().member('1001');
+    if (s.pinHash === BA.hash('1234')) out.push({ id: 'pin', text: 'Eğitmen PIN’i hâlâ varsayılan (1234). Üyeler tahmin edebilir.', btn: 'PIN’i değiştir' });
+    if (demo && demo.name === 'Demo Üye') out.push({ id: 'demo', text: 'Örnek kayıt “Demo Üye” (No 1001) duruyor.', btn: 'Demo üyeyi sil' });
+    return out;
+  }
+  function showWarnings(list) {
+    var md = BA.modal({
+      cls: 'modal--sm',
+      title: 'Kurulum uyarıları',
+      body: '<ul class="warnlist">' + list.map(function (w) {
+        return '<li><span>' + icon('alert') + esc(w.text) + '</span><button class="btn btn--ghost" data-act="fix" data-id="' + w.id + '">' + esc(w.btn) + '</button></li>';
+      }).join('') + '</ul>',
+      actions: {
+        fix: function (el) {
+          if (el.getAttribute('data-id') === 'pin') { md.close(); BA.app.go('trainer', { tab: 'settings' }); return; }
+          BA.confirm('Demo Üye ve örnek ölçümleri silinecek.', { ok: 'Sil', danger: true }).then(function (ok) {
+            if (!ok) return;
+            S().remove('members', '1001');
+            BA.toast('Demo üye silindi.', 'ok');
+            BA.app.go('trainer', BA.app.params.id === '1001' ? { tab: 'members' } : BA.app.params);
+          });
+        }
+      }
+    });
+  }
 
   function pageHead(title, sub, actions) {
     return '<header class="page-head"><div><h1>' + title + '</h1>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' +
@@ -195,7 +226,7 @@
       '<div class="pcard__title"><b>' + esc(p.name) + '</b><span>' + p.days.length + ' gün · ' + BA.fmtDate(p.assignedAt) + ' tarihinde atandı</span></div>' +
       p.days.map(function (d) {
         return '<div class="pday"><b>' + esc(d.name) + '</b><span>' + d.items.map(function (it) {
-          var ex = S().exercise(it.exerciseId); return ex ? esc(ex.name) : '';
+          var ex = S().exercise(it.exerciseId); return ex ? (ex.code ? '<b class="code-t">' + esc(ex.code) + '</b> ' : '') + esc(ex.name) : '';
         }).filter(Boolean).join(' · ') + '</span></div>';
       }).join('') :
       '<div class="empty empty--sm">' + icon('list') + '<b>Program atanmadı</b></div>';
@@ -238,6 +269,7 @@
           '<div class="pcard">' + progHtml + '</div>' +
           '<div class="card__foot">' +
             '<button class="btn btn--ghost" data-act="editProgram">' + icon('edit') + (p ? 'Programı düzenle' : 'Sıfırdan program oluştur') + '</button>' +
+            (p ? '<button class="btn btn--ghost" data-act="printProgram">' + icon('print') + 'Yazdır</button>' : '') +
             (p ? '<button class="btn btn--ghost btn--danger-ghost" data-act="clearProgram">' + icon('trash') + 'Kaldır</button>' : '') +
           '</div>' +
         '</section>' +
@@ -272,6 +304,7 @@
           else go();
         },
         editProgram: function () { BA.app.go('trainer', { tab: 'editor', kind: 'member', id: m.id }); },
+        printProgram: function () { BA.printProgram(m); },
         clearProgram: function () {
           BA.confirm('Üyenin programı kaldırılacak.', { ok: 'Kaldır', danger: true }).then(function (ok) {
             if (ok) { m.program = null; S().save(); reload(); }
@@ -424,20 +457,36 @@
           BA.METRICS.forEach(function (c) {
             if (f[c.key] === '') return;
             var n = BA.num(f[c.key]);
-            if (n == null || n <= 0 || n > 400) bad = c.label;
+            if (n == null || n <= 0 || n > (c.key === 'fat' ? 70 : 400)) bad = c.label;
             else { out[c.key] = n; any = true; }
           });
           if (bad) return BA.toast(bad + ' için geçerli bir sayı girin.', 'err');
           if (!any) return BA.toast('En az bir ölçüm değeri girin.', 'err');
-          if (rec) m.measurements = m.measurements.map(function (x) { return x.id === rec.id ? out : x; });
-          else m.measurements.push(out);
-          S().save();
-          md.close();
-          BA.toast('Ölçüm kaydedildi.', 'ok');
-          done();
+          // Önceki ölçüme göre olağandışı fark → büyük ihtimalle yazım hatası (36 yerine 3,6 gibi)
+          var before = null;
+          ms.forEach(function (x) { if (x.date <= out.date && (!rec || x.id !== rec.id)) before = x; });
+          var odd = before ? BA.METRICS.filter(function (c) {
+            var a = before[c.key], b = out[c.key];
+            if (a == null || a === '' || b == null) return false;
+            return Math.abs(b - a) / a > (c.key === 'height' ? 0.03 : c.key === 'fat' ? 0.35 : 0.2);
+          }).map(function (c) { return c.label + ': ' + BA.fmtNum(+before[c.key]) + ' → ' + BA.fmtNum(out[c.key]) + ' ' + c.unit; }) : [];
+          if (odd.length) {
+            BA.confirm('Önceki ölçüme (' + BA.fmtDate(before.date) + ') göre büyük fark var: ' + odd.join(' · ') + '. Değerler doğru mu?',
+              { title: 'Ölçümü kontrol edin', ok: 'Evet, doğru' }).then(function (ok) { if (ok) commit(out); });
+            return;
+          }
+          commit(out);
         }
       }
     });
+    function commit(out) {
+      if (rec) m.measurements = m.measurements.map(function (x) { return x.id === rec.id ? out : x; });
+      else m.measurements.push(out);
+      S().save();
+      md.close();
+      BA.toast('Ölçüm kaydedildi.', 'ok');
+      done();
+    }
   }
 
   /* ================================================================ ŞABLONLAR */
@@ -523,11 +572,12 @@
       var list = S().db.exercises.filter(function (e) { return reg === 'all' || e.region === reg; })
         .sort(function (a, b) {
           var ra = BA.REGIONS.indexOf(BA.regionById(a.region)), rb = BA.REGIONS.indexOf(BA.regionById(b.region));
-          return ra - rb || a.name.localeCompare(b.name, 'tr');
+          return ra - rb || S().exCmp(a, b);
         });
       var missing = S().db.exercises.filter(function (e) { return S().hasVideo(e) === false; }).length;
       main.innerHTML = pageHead('Hareket Kütüphanesi',
           S().db.exercises.length + ' hareket' + (server ? ' · ' + missing + ' tanesinin videosu eksik' : ''),
+          '<button class="btn btn--ghost" data-act="codeList">' + icon('list') + '<span>Kod listesi ekle</span></button>' +
           '<button class="btn btn--primary" data-act="newEx">' + icon('plus') + '<span>Yeni Hareket</span></button>') +
         '<div class="chipbar">' + [{ id: 'all', name: 'Tümü' }].concat(BA.REGIONS).map(function (r) {
           return '<button class="chip' + (reg === r.id ? ' is-on' : '') + '" data-act="reg" data-id="' + r.id + '">' + esc(r.name) + '</button>';
@@ -537,7 +587,7 @@
           return '<div class="exrow">' +
             '<button class="exrow__main" data-act="preview" data-id="' + esc(e.id) + '">' +
               '<span class="vstat vstat--' + (has === true ? 'on' : has === false ? 'off' : 'unk') + '">' + icon(has === false ? 'film' : 'play') + '</span>' +
-              '<span class="exrow__name"><b>' + esc(e.name) + '</b><span>' + esc(BA.regionById(e.region).name) + ' · ' + esc(e.equipment || '') + ' · ' + esc(e.level || '') + '</span></span>' +
+              '<span class="exrow__name"><b>' + BA.codeChip(e) + esc(e.name) + '</b><span>' + esc(BA.regionById(e.region).name) + ' · ' + esc(e.equipment || '') + ' · ' + esc(e.level || '') + '</span></span>' +
               '<span class="exrow__file">' + (e.video ? esc(e.video) : '<em>video yok</em>') + (has === false && e.video ? '<small>dosya bulunamadı</small>' : '') + '</span>' +
             '</button>' +
             '<button class="icon-btn" data-act="editEx" data-id="' + esc(e.id) + '" aria-label="Düzenle">' + icon('edit') + '</button>' +
@@ -551,10 +601,62 @@
         reg: function (el) { reg = el.getAttribute('data-id'); BA.app.params.region = reg; render(); },
         preview: function (el) { BA.showExercise(el.getAttribute('data-id')); },
         newEx: function () { exerciseForm(null, render, reg); },
+        codeList: function () { codeListForm(render); },
         editEx: function (el) { exerciseForm(S().exercise(el.getAttribute('data-id')), render); }
       }
     };
   };
+
+  /* Hocanın kod listesini toplu ekleme: yapıştır → önizle → içe aktar */
+  function codeListForm(done) {
+    var map = Object.assign({}, S().db.settings.codeRegions || {});
+    var parsed = { rows: [], bad: [] };
+    var md = BA.modal({
+      cls: 'modal--lg',
+      title: 'Kod listesi ekle',
+      subtitle: 'Her satıra bir hareket: “A1,1 OMUZ YANA AÇIŞ”. Excel’den iki sütun (kod, ad) kopyalayıp yapıştırabilirsiniz.',
+      body: '<div class="form"><label class="field"><span>Liste</span><textarea data-ref="txt" rows="9" spellcheck="false" placeholder="A1,1 OMUZ YANA AÇIŞ&#10;A1,2 OMUZ YANA ÖNDEN AÇIŞ"></textarea></label></div>' +
+        '<div data-ref="prev" class="clprev"></div>',
+      foot: '<button class="btn btn--ghost" data-act="__close">Vazgeç</button><button class="btn btn--primary" data-act="apply" disabled>' + icon('check') + 'İçe aktar</button>',
+      actions: {
+        apply: function () {
+          if (!parsed.rows.length) return;
+          S().db.settings.codeRegions = map;
+          var r = S().applyCodeList(parsed.rows, map);
+          md.close();
+          BA.toast(r.added + ' hareket eklendi, ' + r.updated + ' hareketin adı güncellendi.', 'ok');
+          done();
+        }
+      }
+    });
+    var txt = md.el.querySelector('[data-ref=txt]'), prev = md.el.querySelector('[data-ref=prev]'), btn = md.el.querySelector('[data-act=apply]');
+    var upd = BA.debounce(function () {
+      parsed = S().parseCodeList(txt.value);
+      var letters = [], seen = {}, nNew = 0, nUpd = 0;
+      parsed.rows.forEach(function (r) {
+        if (!seen[r.letter]) { seen[r.letter] = 1; letters.push(r.letter); }
+        var ex = S().byCode(r.code);
+        if (!ex) nNew++; else if (ex.name !== r.name) nUpd++;
+      });
+      letters.sort();
+      btn.disabled = !parsed.rows.length;
+      prev.innerHTML = !txt.value.trim() ? '' :
+        '<p class="clprev__sum"><b>' + parsed.rows.length + '</b> satır okundu · ' + nNew + ' yeni · ' + nUpd + ' ad güncellenecek' +
+          (parsed.bad.length ? ' · <em>' + parsed.bad.length + ' satır anlaşılamadı</em>' : '') + '</p>' +
+        (letters.length ? '<div class="clprev__map">' + letters.map(function (l) {
+          return '<label class="field"><span>' + esc(l) + ' kodları →</span><select data-l="' + esc(l) + '">' + BA.REGIONS.map(function (r) {
+            return '<option value="' + r.id + '"' + (map[l] === r.id ? ' selected' : '') + '>' + esc(r.name) + '</option>';
+          }).join('') + '</select></label>';
+        }).join('') + '</div>' : '') +
+        (parsed.bad.length ? '<ul class="clprev__bad">' + parsed.bad.slice(0, 5).map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul>' : '') +
+        (parsed.rows.length ? '<ol class="clprev__rows">' + parsed.rows.slice(0, 6).map(function (r) {
+          return '<li><span class="code">' + esc(r.code) + '</span>' + esc(r.name) + '</li>';
+        }).join('') + (parsed.rows.length > 6 ? '<li class="more">… ve ' + (parsed.rows.length - 6) + ' satır daha</li>' : '') + '</ol>' : '');
+      letters.forEach(function (l) { if (!map[l]) map[l] = 'omuz'; });
+    }, 200);
+    txt.addEventListener('input', upd);
+    prev.addEventListener('change', function (e) { var l = e.target.getAttribute('data-l'); if (l) map[l] = e.target.value; });
+  }
 
   function exerciseForm(ex, done, region) {
     var isNew = !ex;
@@ -577,7 +679,8 @@
       cls: 'modal--lg',
       title: isNew ? 'Yeni Hareket' : 'Hareketi Düzenle',
       body: '<form class="form grid2" onsubmit="return false">' +
-        BA.field('Hareket adı', 'name', d.name, { ph: 'Örn. Bench Press' }) +
+        BA.field('Hareket adı', 'name', d.name, { ph: 'Örn. Omuz yana açış' }) +
+        BA.field('Salon kodu', 'code', d.code || '', { ph: 'Örn. A1,1 (boş bırakılabilir)' }) +
         BA.field('Bölge', 'region', d.region, { options: BA.REGIONS.map(function (r) { return { value: r.id, label: r.name }; }) }) +
         BA.field('Ekipman', 'equipment', d.equipment, { ph: 'Dumbbell, makine…' }) +
         BA.field('Seviye', 'level', d.level, { options: BA.LEVELS }) +
@@ -592,10 +695,13 @@
         save: function () {
           var f = BA.formData(md.body);
           if (!f.name) return BA.toast('Hareket adı gerekli.', 'err');
+          var code = BA.codeKey(f.code), other = code && S().byCode(code);
+          if (code && !/^[A-ZÇĞÖŞÜ]{1,3}\d{1,3}(,\d{1,3})?$/.test(code)) return BA.toast('Kod biçimi: harf + sayı, ör. A1,1', 'err');
+          if (other && other.id !== d.id) return BA.toast(code + ' kodu zaten “' + other.name + '” hareketinde.', 'err');
           var lines = function (s) { return s.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); };
           var rec = Object.assign({}, d, {
             id: d.id || BA.norm(f.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + BA.uid().slice(-4),
-            name: f.name, region: f.region, equipment: f.equipment, level: f.level, video: f.video,
+            name: f.name, code: code, region: f.region, equipment: f.equipment, level: f.level, video: f.video,
             steps: lines(f.steps), mistakes: lines(f.mistakes)
           });
           S().upsert('exercises', rec);

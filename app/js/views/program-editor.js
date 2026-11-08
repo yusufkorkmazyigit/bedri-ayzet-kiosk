@@ -11,7 +11,7 @@
     function render() {
       main.innerHTML =
         '<button class="crumb" data-act="cancel">' + icon('back') + esc(o.crumb) + '</button>' +
-        '<header class="page-head"><div><h1>' + esc(o.title) + '</h1><p>Hareket eklemek için her günün altındaki butonu kullanın.</p></div>' +
+        '<header class="page-head"><div><h1>' + esc(o.title) + '</h1><p>Hareketi kodla ekleyin (ör. <b>A1,1</b> ya da <b>A1,1 3x12</b>) veya listeden seçin.</p></div>' +
           '<div class="page-head__act"><button class="btn btn--ghost" data-act="cancel">Vazgeç</button>' +
           '<button class="btn btn--primary" data-act="save">' + icon('check') + 'Kaydet</button></div></header>' +
         '<section class="card"><div class="form grid3">' +
@@ -37,7 +37,7 @@
           var at = ' data-d="' + di + '" data-i="' + ii + '"';
           return '<div class="erow">' +
             '<span class="erow__no">' + (ii + 1) + '</span>' +
-            '<button class="erow__ex" data-act="swapEx"' + at + '><b>' + esc(ex ? ex.name : 'Silinmiş hareket') + '</b><span>' + esc(ex ? BA.regionById(ex.region).name : '') + ' · değiştir</span></button>' +
+            '<button class="erow__ex" data-act="swapEx"' + at + '><b>' + BA.codeChip(ex) + esc(ex ? ex.name : 'Silinmiş hareket') + '</b><span>' + esc(ex ? BA.regionById(ex.region).name : '') + ' · değiştir</span></button>' +
             '<input type="text" inputmode="numeric" data-kb="num" data-f="sets"' + at + ' value="' + esc(it.sets) + '">' +
             '<input type="text" data-f="reps"' + at + ' value="' + esc(it.reps) + '" placeholder="10-12">' +
             '<input type="text" inputmode="numeric" data-kb="num" data-f="rest"' + at + ' value="' + esc(it.rest) + '">' +
@@ -49,9 +49,47 @@
             '</span>' +
           '</div>';
         }).join('') +
-        '<button class="btn btn--ghost btn--dashed" data-act="addItem" data-d="' + di + '">' + icon('plus') + 'Hareket ekle</button>' +
+        '<div class="qadd">' +
+          '<input type="text" class="qadd__in" data-qadd="' + di + '" data-enter autocomplete="off" spellcheck="false" placeholder="Kodla ekle: A1,1 3x12">' +
+          '<span class="qadd__hint" data-qhint="' + di + '"></span>' +
+          '<button class="btn btn--primary" data-act="qadd" data-d="' + di + '">' + icon('plus') + 'Ekle</button>' +
+          '<button class="btn btn--ghost btn--dashed" data-act="addItem" data-d="' + di + '">' + icon('list') + 'Listeden seç</button>' +
+        '</div>' +
       '</section>';
     }
+
+    /* Kod araması + ad araması (Türkçe karakter duyarsız) */
+    function search(q) {
+      var byCode = BA.store.searchCode(q, 40), seen = {}, n = BA.norm(q);
+      byCode.forEach(function (e) { seen[e.id] = 1; });
+      return byCode.concat(BA.store.db.exercises.filter(function (e) {
+        return !seen[e.id] && BA.norm(e.name).indexOf(n) >= 0;
+      }).sort(BA.store.exCmp)).slice(0, 60);
+    }
+
+    /* "A1,1", "A1.1 3x12", "a1 1 4×8-10" → { ex, sets, reps } */
+    function parseQuick(text) {
+      var t = String(text || '').trim();
+      var m = /^(\S+(?:\s+\d{1,3}(?![\dx×*]))?)(?:\s+(\d{1,2})\s*[x×*]\s*(\S+))?\s*$/i.exec(t);
+      if (!m) return null;
+      var ex = BA.store.byCode(m[1]);
+      if (!ex && / /.test(m[1])) return null;
+      return ex ? { ex: ex, sets: m[2] ? +m[2] : 3, reps: m[3] || '10-12' } : null;
+    }
+    function quickAdd(d) {
+      var inp = main.querySelector('[data-qadd="' + d + '"]');
+      if (!inp || !inp.value.trim()) return;
+      var r = parseQuick(inp.value);
+      if (!r) { BA.toast('“' + inp.value.trim() + '” kodlu hareket bulunamadı.', 'err'); return; }
+      draft.days[d].items.push({ exerciseId: r.ex.id, sets: r.sets, reps: r.reps, rest: 60, note: '' });
+      dirty = true; render();
+      var again = main.querySelector('[data-qadd="' + d + '"]');
+      if (again) again.focus();
+    }
+    main.addEventListener('keydown', function (e) {
+      var a = e.target.getAttribute && e.target.getAttribute('data-qadd');
+      if (a != null && e.key === 'Enter') { e.preventDefault(); quickAdd(+a); }
+    });
 
     function idx(el) { return { d: +el.getAttribute('data-d'), i: +el.getAttribute('data-i') }; }
 
@@ -61,20 +99,26 @@
       var md = BA.modal({
         cls: 'modal--lg',
         title: title,
-        body: '<div class="chipbar" data-ref="chips"></div><div class="picklist" data-ref="list"></div>',
+        body: '<input type="text" class="pick__q" data-ref="q" autocomplete="off" spellcheck="false" placeholder="Kod veya ad ile ara…">' +
+          '<div class="chipbar" data-ref="chips"></div><div class="picklist" data-ref="list"></div>',
         actions: {
           reg: function (el) { reg = el.getAttribute('data-id'); paint(); },
           choose: function (el) { md.close(); cb(el.getAttribute('data-id')); }
         }
       });
+      var qEl = md.el.querySelector('[data-ref=q]'), q = '';
+      qEl.addEventListener('input', function () { q = qEl.value.trim(); paint(); });
       function paint() {
-        md.el.querySelector('[data-ref=chips]').innerHTML = BA.REGIONS.map(function (r) {
+        var chips = md.el.querySelector('[data-ref=chips]');
+        chips.hidden = !!q;
+        chips.innerHTML = BA.REGIONS.map(function (r) {
           return '<button class="chip' + (r.id === reg ? ' is-on' : '') + '" data-act="reg" data-id="' + r.id + '">' + esc(r.name) + '</button>';
         }).join('');
-        var list = BA.store.exercisesIn(reg);
+        var list = q ? search(q) : BA.store.exercisesIn(reg);
         md.el.querySelector('[data-ref=list]').innerHTML = list.length ? list.map(function (e) {
-          return '<button class="pick" data-act="choose" data-id="' + esc(e.id) + '"><b>' + esc(e.name) + '</b><span>' + esc(e.equipment || '') + ' · ' + esc(e.level || '') + '</span>' + icon('plus') + '</button>';
-        }).join('') : '<div class="empty empty--sm"><b>Bu bölgede hareket yok</b></div>';
+          return '<button class="pick" data-act="choose" data-id="' + esc(e.id) + '"><b>' + BA.codeChip(e) + esc(e.name) + '</b><span>' +
+            esc([q ? BA.regionById(e.region).name : '', e.equipment, e.level].filter(Boolean).join(' · ')) + '</span>' + icon('plus') + '</button>';
+        }).join('') : '<div class="empty empty--sm"><b>' + (q ? 'Eşleşen hareket yok' : 'Bu bölgede hareket yok') + '</b></div>';
       }
       paint();
     }
@@ -93,6 +137,7 @@
           if (!dirty) return o.onCancel();
           BA.confirm('Kaydedilmemiş değişiklikler kaybolacak.', { ok: 'Çık', danger: true }).then(function (ok) { if (ok) o.onCancel(); });
         },
+        qadd: function (el) { quickAdd(+el.getAttribute('data-d')); },
         addDay: function () { draft.days.push({ name: 'Gün ' + (draft.days.length + 1), items: [] }); dirty = true; render(); },
         delDay: function (el) {
           var d = +el.getAttribute('data-d');
@@ -127,7 +172,13 @@
     }
 
     function sync(ev) {
-      var el = ev.target, f = el.getAttribute('data-f');
+      var el = ev.target, qa = el.getAttribute('data-qadd');
+      if (qa != null) {
+        var r = parseQuick(el.value), h = main.querySelector('[data-qhint="' + qa + '"]');
+        if (h) { h.textContent = r ? '→ ' + r.ex.name + ' · ' + r.sets + '×' + r.reps : (el.value.trim() ? 'Kod bulunamadı' : ''); h.classList.toggle('is-ok', !!r); }
+        return;
+      }
+      var f = el.getAttribute('data-f');
       if (!f) return;
       dirty = true;
       var v = el.value;

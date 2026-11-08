@@ -769,3 +769,79 @@ html.lite .modal__card, html.lite .toast { box-shadow: none; }
   .bm { max-width: 30rem; }
   .panel--progress { gap: .75rem; }
 }
+
+/* ------------------------------------------------------------------ v1.6 SALON KODLARI */
+.code.code {
+  display: inline-block; margin-right: .45em; padding: .05em .4em; border-radius: 6px;
+  background: var(--acc-dim); color: var(--acc); font-weight: 800; font-size: .86em;
+  letter-spacing: .02em; font-variant-numeric: tabular-nums; white-space: nowrap; vertical-align: .06em;
+}
+.code-t { color: var(--acc); font-weight: 700; }
+
+/* Kodla ara: iki sütun (solda sonuçlar, sağda tuşlar) — yatay ekranda tek bakışta sığar */
+.modal--code .modal__card { max-width: 52rem; }
+.pad--code { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+.pad__col { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+.pad--code .pad__display { letter-spacing: .08em; }
+.pad--code .pad__key { height: 3.9rem; }
+.pad__letters { display: grid; grid-template-columns: repeat(auto-fit, minmax(3.4rem, 1fr)); gap: .6rem; }
+.pad__key--l { color: var(--acc); font-weight: 800; }
+.cres { height: 15.5rem; overflow: hidden; display: flex; flex-direction: column; gap: .45rem; }
+.cres__row {
+  display: flex; align-items: center; gap: .3rem; min-height: 2.4rem; padding: 0 .8rem; flex: none;
+  border-radius: var(--r); background: var(--s2); border: 1px solid var(--line); text-align: left;
+}
+.cres__row b { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cres__row .ico { width: 1.1rem; height: 1.1rem; color: var(--acc); flex: none; }
+.cres__msg { margin: auto 0; text-align: center; color: var(--mut); font-size: .9rem; padding: 0 1rem; }
+
+/* Program düzenleyici: kodla hızlı ekleme */
+.qadd { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.qadd__in { flex: 1 1 13rem; max-width: 20rem; font-weight: 700; letter-spacing: .02em; }
+.qadd__hint { flex: 1 1 10rem; min-width: 0; color: var(--mut); font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qadd__hint.is-ok { color: var(--tx2); }
+.pick__q { margin-bottom: .25rem; }
+
+/* Kurulum uyarıları */
+.btn--warn { background: rgba(246, 173, 60, .12); border: 1px solid rgba(246, 173, 60, .4); color: var(--bad); }
+.warnlist { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.warnlist li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; border-radius: var(--r); background: var(--s2); }
+.warnlist li > span { display: flex; align-items: center; gap: .6rem; color: var(--tx2); }
+.warnlist .ico { color: var(--bad); flex: none; }
+
+/* Kod listesi içe aktarma önizlemesi */
+.clprev { display: grid; gap: .75rem; margin-top: .75rem; }
+.clprev__sum { margin: 0; color: var(--tx2); }
+.clprev__sum em { font-style: normal; color: var(--bad); }
+.clprev__map { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .6rem; }
+.clprev__rows, .clprev__bad { margin: 0; padding-left: 1.2rem; display: grid; gap: .25rem; font-size: .9rem; }
+.clprev__rows .more { list-style: none; color: var(--mut); }
+.clprev__bad { color: var(--bad); }
+
+@media (orientation: portrait), (max-width: 760px) {
+  .pad--code { grid-template-columns: 1fr; }
+  .cres { height: 9rem; }
+}
+
+/* ------------------------------------------------------------------ PROGRAM ÇIKTISI (yazdır) */
+#print { display: none; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body { background: #fff !important; color: #000; height: auto; overflow: visible; }
+  body > *:not(#print) { display: none !important; }
+  #print { display: block; font: 10.5pt/1.35 "Segoe UI", Arial, sans-serif; color: #000; }
+  .pr__head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #0a2540; padding-bottom: 6pt; margin-bottom: 10pt; }
+  .pr__head b { display: block; font-size: 15pt; color: #0a2540; }
+  .pr__head span { font-size: 9pt; color: #555; }
+  .pr__who { text-align: right; }
+  .pr__who b { font-size: 12pt; }
+  #print h1 { font-size: 16pt; margin: 0 0 2pt; }
+  .pr__note { margin: 0 0 8pt; color: #333; }
+  .pr__day { break-inside: avoid; margin-top: 10pt; }
+  .pr__day h2 { font-size: 12pt; margin: 0 0 4pt; color: #0a2540; }
+  #print table { width: 100%; border-collapse: collapse; }
+  #print th, #print td { border: 1px solid #bbb; padding: 3pt 5pt; text-align: left; vertical-align: top; }
+  #print th { background: #e8eef5; font-size: 9pt; }
+  .pr__code { font-weight: 700; white-space: nowrap; }
+  .pr__foot { margin-top: 12pt; font-size: 8.5pt; color: #555; }
+}

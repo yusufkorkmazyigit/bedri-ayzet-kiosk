@@ -156,6 +156,103 @@
     return m;
   };
 
+  /* ------------------------------------------------------------ kodla ara (A1,1 gibi)
+     Harf satırı salonda kullanılan harflerden üretilir; her tuşta eşleşenler anında listelenir. */
+  BA.codePad = function () {
+    var val = '';
+    var letters = BA.store.codeLetters();
+    var hasCodes = letters.length > 0;
+    if (!hasCodes) letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '<'];
+    var m = BA.modal({
+      cls: 'modal--pad modal--code',
+      title: 'Kodla Ara',
+      subtitle: 'Programındaki hareket kodunu yaz (ör. A1,1).',
+      body:
+        '<div class="pad pad--code"><div class="pad__col">' +
+          '<div class="pad__display" data-ref="disp"></div>' +
+          '<div class="cres" data-ref="res"></div>' +
+          '<button class="btn btn--primary btn--xl btn--block" data-act="go">Hareketi Göster' + icon('arrow') + '</button>' +
+        '</div><div class="pad__col">' +
+          '<div class="pad__letters">' + letters.map(function (l) {
+            return '<button class="pad__key pad__key--l" data-act="k" data-k="' + l + '">' + l + '</button>';
+          }).join('') + '</div>' +
+          '<div class="pad__grid">' + keys.map(function (k) {
+            if (k === '<') return '<button class="pad__key pad__key--fn" data-act="bs" aria-label="Geri">' + icon('backspace') + '</button>';
+            return '<button class="pad__key' + (k === ',' ? ' pad__key--fn' : '') + '" data-act="k" data-k="' + k + '">' + k + '</button>';
+          }).join('') + '</div>' +
+        '</div></div>',
+      actions: {
+        k: function (el) { press(el.getAttribute('data-k')); },
+        bs: function () { val = val.slice(0, -1); paint(); },
+        go: go,
+        pick: function (el) { open(el.getAttribute('data-id')); }
+      },
+      onClose: function () { document.removeEventListener('keydown', onKey, true); }
+    });
+    var disp = m.el.querySelector('[data-ref=disp]'), res = m.el.querySelector('[data-ref=res]');
+    var found = [];
+
+    function press(k) {
+      if (val.length >= 8) return;
+      if (/[A-ZÇĞÖŞÜ]/.test(k) && /\d/.test(val)) val = '';   // rakamdan sonra harf → yeni kod
+      if (k === ',' && (!/\d$/.test(val) || val.indexOf(',') >= 0)) return;
+      val += k; paint();
+    }
+    function paint() {
+      disp.innerHTML = val ? esc(val) : '<span class="ph">A1,1</span>';
+      disp.classList.remove('is-error');
+      found = val ? BA.store.searchCode(val, 6) : [];
+      if (!hasCodes) { res.innerHTML = '<p class="cres__msg">Henüz kodlu hareket yok. Eğitmen panelinden kod listesi eklenebilir.</p>'; return; }
+      res.innerHTML = !val ? '<p class="cres__msg">Harf ve rakamlara dokun; eşleşen hareketler burada çıkar.</p>' :
+        found.length ? found.map(function (e) {
+          return '<button class="cres__row" data-act="pick" data-id="' + esc(e.id) + '">' + BA.codeChip(e) + '<b>' + esc(e.name) + '</b>' + icon('play') + '</button>';
+        }).join('') : '<p class="cres__msg">Bu kodla hareket bulunamadı.</p>';
+    }
+    function go() {
+      if (!found.length) { disp.classList.add('is-error'); shake(disp); return; }
+      open(found[0].id);
+    }
+    function open(id) { m.close(); BA.showExercise(id); }
+    function onKey(e) {
+      if (m.closed || BA.modal.top() !== m) return;
+      var k = e.key.length === 1 ? e.key.toLocaleUpperCase('tr').replace('İ', 'I') : e.key;
+      if (/^[0-9A-ZÇĞÖŞÜ]$/.test(k)) press(k);
+      else if (k === ',' || k === '.') press(',');
+      else if (k === 'Backspace') { val = val.slice(0, -1); paint(); }
+      else if (k === 'Enter') go();
+      else return;
+      e.preventDefault();
+    }
+    document.addEventListener('keydown', onKey, true);
+    paint();
+    return m;
+  };
+
+  /* ------------------------------------------------------------ program çıktısı (A4, açık tema)
+     Gizli #print alanı doldurulur; @media print yalnızca onu gösterir. */
+  BA.printProgram = function (m) {
+    var p = m.program;
+    if (!p || !p.days || !p.days.length) return BA.toast('Yazdırılacak program yok.', 'err');
+    var s = BA.store.db.settings;
+    var el = document.getElementById('print');
+    if (!el) { el = document.createElement('div'); el.id = 'print'; document.body.appendChild(el); }
+    el.innerHTML =
+      '<header class="pr__head"><div><b>' + esc(s.gymName) + '</b><span>' + esc(s.gymTagline) + '</span></div>' +
+        '<div class="pr__who"><b>' + esc(m.name) + '</b><span>Üye No ' + esc(m.id) + ' · ' + BA.fmtDate(BA.todayISO()) + '</span></div></header>' +
+      '<h1>' + esc(p.name) + '</h1>' + (p.note ? '<p class="pr__note">' + esc(p.note) + '</p>' : '') +
+      p.days.map(function (d) {
+        return '<section class="pr__day"><h2>' + esc(d.name) + '</h2><table><thead><tr><th>#</th><th>Kod</th><th>Hareket</th><th>Set</th><th>Tekrar</th><th>Dinlenme</th><th>Not</th></tr></thead><tbody>' +
+          d.items.map(function (it, i) {
+            var ex = BA.store.exercise(it.exerciseId) || { name: 'Silinmiş hareket' };
+            return '<tr><td>' + (i + 1) + '</td><td class="pr__code">' + esc(ex.code || '—') + '</td><td>' + esc(ex.name) + '</td><td>' + esc(it.sets) +
+              '</td><td>' + esc(it.reps) + '</td><td>' + (it.rest ? esc(it.rest) + ' sn' : '—') + '</td><td>' + esc(it.note || '') + '</td></tr>';
+          }).join('') + '</tbody></table></section>';
+      }).join('') +
+      '<footer class="pr__foot">Hareketlerin videolu anlatımı için kioskta Üye Girişi → Üye No ' + esc(m.id) + ' ya da Kodla Ara.</footer>';
+    window.print();
+  };
+
   function shake(el) {
     el.classList.remove('shake');
     void el.offsetWidth; // animasyonu yeniden başlat
@@ -183,7 +280,7 @@
     var m = BA.modal({
       cls: 'modal--ex',
       title: ex.name,
-      subtitle: region.name + ' · ' + (ex.equipment || '') + ' · ' + (ex.level || ''),
+      subtitle: [ex.code ? 'Kod ' + ex.code : '', region.name, ex.equipment, ex.level].filter(Boolean).join(' · '),
       body:
         '<div class="ex">' +
           '<div class="ex__media" data-ref="media">' +

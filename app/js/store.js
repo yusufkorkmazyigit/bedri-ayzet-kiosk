@@ -12,6 +12,7 @@
     mode: 'local',
     videos: null,          // sunucu modunda mevcut video dosyaları (Set benzeri obje), yerelde null
     dirty: false,
+    rev: 0,                // her kayıtta artar; türetilmiş önbellekler (kod dizini) buna bakar
     _failNotified: false
   };
 
@@ -31,7 +32,10 @@
     // Sonradan eklenen hazır fotoğrafları eski kayıtlara da tanıt
     var seedPhotos = {};
     base.exercises.forEach(function (e) { if (e.photos) seedPhotos[e.id] = e.photos; });
-    db.exercises.forEach(function (e) { if (e.photos == null && seedPhotos[e.id]) e.photos = seedPhotos[e.id]; });
+    db.exercises.forEach(function (e) {
+      if (e.photos == null && seedPhotos[e.id]) e.photos = seedPhotos[e.id];
+      e.code = e.code ? BA.codeKey(e.code) : '';
+    });
     db.templates = Array.isArray(db.templates) ? db.templates : base.templates;
     db.members = Array.isArray(db.members) ? db.members : [];
     db.members.forEach(function (m) {
@@ -103,6 +107,7 @@
   var flushSoon = BA.debounce(flush, 350);
 
   store.save = function (now) {
+    store.rev++;
     store.dirty = true;
     if (now) flush(); else flushSoon();
   };
@@ -170,10 +175,88 @@
   store.template = function (id) { return byId(store.db.templates, id); };
   store.member = function (id) { return byId(store.db.members, String(id)); };
 
+  /* Kodlu hareketler kod sırasıyla, kodsuzlar adla (sonda) */
+  store.exCmp = function (a, b) {
+    return (a.code || b.code) ? BA.codeCmp(a.code, b.code) : a.name.localeCompare(b.name, 'tr');
+  };
   store.exercisesIn = function (regionId) {
     return store.db.exercises
       .filter(function (e) { return e.region === regionId; })
-      .sort(function (a, b) { return a.name.localeCompare(b.name, 'tr'); });
+      .sort(store.exCmp);
+  };
+
+  /* ------------------------------------------------------------ hareket kodları
+     Dizin yalnızca veri değiştiğinde (rev) yeniden kurulur; arama 300+ kodda bile anlık. */
+  var codeIdx = null, codeList = null, codeRev = -1;
+  function codeIndex() {
+    if (codeIdx && codeRev === store.rev) return;
+    codeIdx = {}; codeList = [];
+    store.db.exercises.forEach(function (e) {
+      if (!e.code || codeIdx[e.code]) return;
+      codeIdx[e.code] = e; codeList.push(e);
+    });
+    codeList.sort(function (a, b) { return BA.codeCmp(a.code, b.code); });
+    codeRev = store.rev;
+  }
+  store.byCode = function (code) { codeIndex(); return codeIdx[BA.codeKey(code)] || null; };
+
+  /* "A1" → A1, A1,1, A1,2 … (tam eşleşme ve alt kodlar önce), sonra A10… */
+  store.searchCode = function (q, limit) {
+    codeIndex();
+    var k = BA.codeKey(q);
+    if (!k) return [];
+    var exact = [], sub = [], rest = [];
+    for (var i = 0; i < codeList.length; i++) {
+      var c = codeList[i].code;
+      if (c === k) exact.push(codeList[i]);
+      else if (c.indexOf(k + ',') === 0) sub.push(codeList[i]);
+      else if (c.indexOf(k) === 0) rest.push(codeList[i]);
+    }
+    return exact.concat(sub, rest).slice(0, limit || 50);
+  };
+  store.codeLetters = function () {
+    codeIndex();
+    var seen = {}, out = [];
+    codeList.forEach(function (e) { var l = /^[A-ZÇĞÖŞÜ]+/.exec(e.code); if (l && !seen[l[0]]) { seen[l[0]] = 1; out.push(l[0]); } });
+    return out;
+  };
+
+  /* Hocanın listesi: her satır "A1,1 OMUZ YANA AÇIŞ" (Excel'den yapıştırma da olur: kod<TAB>ad) */
+  store.parseCodeList = function (text) {
+    var rows = [], bad = [], seen = {};
+    String(text || '').split(/\r?\n/).forEach(function (raw) {
+      var line = raw.replace(/\t+/g, ' ').trim();
+      if (!line) return;
+      var m = /^([A-Za-zÇĞİÖŞÜçğıöşü]{1,3}\s*\d{1,3}(?:\s*[.,\-\/]\s*\d{1,3})?)\s*[:–\-=)]?\s+(\S.*)$/.exec(line);
+      if (!m) { bad.push(line); return; }
+      var code = BA.codeKey(m[1]);
+      if (seen[code]) { bad.push(line + '  (tekrar eden kod)'); return; }
+      seen[code] = 1;
+      rows.push({ code: code, name: BA.tidyName(m[2]), letter: /^[A-ZÇĞÖŞÜ]+/.exec(code)[0] });
+    });
+    return { rows: rows, bad: bad };
+  };
+
+  /* Var olan kodun adını günceller (video/fotoğraf korunur), olmayanı yeni hareket olarak ekler. */
+  store.applyCodeList = function (rows, letterRegion) {
+    var added = 0, updated = 0;
+    rows.forEach(function (r) {
+      var ex = store.byCode(r.code);
+      if (ex) {
+        if (ex.name !== r.name) { ex.name = r.name; updated++; }
+        return;
+      }
+      var id = 'k-' + BA.norm(r.code).replace(/[^a-z0-9]+/g, '-');
+      while (store.exercise(id)) id += '-' + BA.uid().slice(-3);
+      store.db.exercises.push({
+        id: id, code: r.code, name: r.name, region: letterRegion[r.letter] || 'omuz',
+        equipment: '', level: '', video: '', photos: 0, steps: [], mistakes: []
+      });
+      added++;
+      store.rev++; // dizin yeni kodu görsün (aynı listede tekrar eklenmesin)
+    });
+    store.save(true);
+    return { added: added, updated: updated };
   };
 
   store.countByRegion = function () {

@@ -126,7 +126,7 @@
   function exercises() {
     return EX.map(function (e) {
       return {
-        id: e[0], region: e[1], name: e[2], equipment: e[3], level: e[4],
+        id: e[0], code: '', region: e[1], name: e[2], equipment: e[3], level: e[4],
         video: e[0] + '.mp4',
         photos: NO_PHOTOS[e[0]] ? 0 : 2,
         steps: e[5].split('|'),
@@ -235,7 +235,9 @@
         memberIdle: 90,
         trainerIdle: 300,
         lite: false,
-        osk: 'auto'
+        osk: 'auto',
+        // Salon kodlarının ilk harfi → uygulamadaki bölge (A Omuz, B Göğüs, C Kanat, D Arka kol, E Pazu, F Bacak)
+        codeRegions: { A: 'omuz', B: 'gogus', C: 'sirt', D: 'kol', E: 'kol', F: 'bacak' }
       },
       exercises: exercises(),
       templates: tpls,

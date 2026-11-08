@@ -112,6 +112,36 @@
       .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u');
   };
 
+  /* ------------------------------------------------------------ salon hareket kodları (A1,1 gibi)
+     "a1.1", "A1 1", "A1-1", "A1,1" → "A1,1"; tanınmayan biçim büyük harf + boşluksuz döner. */
+  var CODE_RE = /^([A-ZÇĞÖŞÜ]{1,3})\s*(\d{1,3})(?:\s*[.,\-\/ ]\s*(\d{1,3}))?$/;
+  BA.codeKey = function (s) {
+    var t = String(s || '').trim().toLocaleUpperCase('tr').replace(/İ/g, 'I');
+    if (!t) return '';
+    var m = CODE_RE.exec(t);
+    return m ? m[1] + m[2] + (m[3] ? ',' + m[3] : '') : t.replace(/\s+/g, '');
+  };
+  /* Doğal sıralama: A2,1 < A10,1 ; kodsuzlar sona */
+  function codeParts(c) {
+    var m = /^([A-ZÇĞÖŞÜ]*)(\d*)(?:,(\d+))?/.exec(c || '');
+    return [m[1], m[2] ? +m[2] : -1, m[3] ? +m[3] : -1];
+  }
+  BA.codeCmp = function (a, b) {
+    if (!a || !b) return a ? -1 : b ? 1 : 0;
+    var x = codeParts(a), y = codeParts(b);
+    return x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : (x[1] - y[1]) || (x[2] - y[2]);
+  };
+  BA.codeChip = function (ex) {
+    return ex && ex.code ? '<span class="code">' + BA.esc(ex.code) + '</span>' : '';
+  };
+  /* "OMUZ YANA AÇIŞ" → "Omuz yana açış" (yalnızca tamamı büyük harfse) */
+  BA.tidyName = function (s) {
+    s = String(s || '').replace(/\s+/g, ' ').trim();
+    if (!s || s !== s.toLocaleUpperCase('tr')) return s;
+    var l = s.toLocaleLowerCase('tr');
+    return l.charAt(0).toLocaleUpperCase('tr') + l.slice(1);
+  };
+
   /* PIN özeti (FNV-1a). Kriptografik değil — kiosk düzeyinde koruma içindir. */
   BA.hash = function (str) {
     var h = 0x811c9dc5;
@@ -184,6 +214,8 @@
     down: '<path d="M6 9l6 6 6-6"/>',
     logout: '<path d="M15 4h4v16h-4M10 17l5-5-5-5M15 12H3"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    print: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+    alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
     users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.8 2.9-6 6.5-6s6.5 2.2 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.2.6 3.5 2.6 3.5 6"/>',
     list: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
     film: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',

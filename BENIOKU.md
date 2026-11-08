@@ -52,6 +52,17 @@ Videosu olmayan hareketlerde başlangıç ve bitiş pozisyonunu gösteren iki fo
 Fotoğraflar [Free Exercise DB](https://github.com/yuhonas/free-exercise-db) projesinden alınmıştır; proje
 verisini kamu malı (Unlicense) olarak yayınlıyor. Dosyalar `app/img/ex/` klasöründedir.
 
+## Salon hareket kodları (A1,1 gibi)
+
+- Her harekete salonun kodu verilebilir (*Hareketler → düzenle → Salon kodu*).
+- Toplu ekleme: *Hareketler → Kod listesi ekle*. Her satıra `A1,1 OMUZ YANA AÇIŞ` yazın ya da Excel'den
+  iki sütunu (kod, ad) kopyalayıp yapıştırın. Kodun harfinin hangi bölgeye gideceği (A → Omuz…) aynı ekranda seçilir.
+  Var olan kodların yalnızca adı güncellenir; videoları korunur.
+- Kod yazımı esnektir: `A1,1`, `A1.1`, `a1 1` aynıdır.
+- Üyeler ana ekrandaki **Kodla Ara** ile kodu yazıp hareketin videosunu açar.
+- Program düzenlerken her günün altındaki kutuya `A1,1` ya da `A1,1 3x12` yazıp Enter (veya ekran klavyesinde Tamam).
+- Üye sayfasındaki **Yazdır** ile program A4 çıktı olarak alınır.
+
 ## Güncelleme
 
 Yeni sürümün zip'ini USB belleğe çıkarın ve **oradaki** `GUNCELLE.bat` dosyasını kioskta çalıştırın.
@@ -75,7 +86,7 @@ Eski klasörü silmeyin: betik yalnızca program dosyalarını yeniler, `data/` 
 
 - Sunucu yalnızca `127.0.0.1`'i dinler; ağdan erişilemez.
 - Üye ve eğitmen oturumları hareketsizlikte otomatik kapanır (süreler Ayarlar'dan değişir).
-- Eğitmen PIN'i 5 hatalı denemeden sonra 60 sn kilitlenir.
+- Eğitmen PIN'i 5 hatalı denemeden sonra 60 sn kilitlenir. Varsayılan PIN (1234) değiştirilmediği sürece eğitmen panelinde uyarı görünür.
 - Üye girişi yalnızca üye numarasıyla yapılır; bu tasarım gereği kolaylık içindir, hassas veri tutulmamalıdır.
 
 ## Sunucu olmadan çalıştırma (yedek yöntem)

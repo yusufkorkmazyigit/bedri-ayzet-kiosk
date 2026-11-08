@@ -4,7 +4,8 @@
  * Tek dosyalık, bağımlılıksız mini HTTP sunucusu.
  *  - app/     klasörünü  /          altında sunar
  *  - videos/  klasörünü  /videos/   altında sunar (Range destekli → video ileri/geri sarma)
- *  - data/db.json dosyasını /api/db üzerinden okur/yazar (atomik yazım + günlük yedek)
+ *  - data/db.json dosyasını /api/db üzerinden okur/yazar (atomik yazım + günlük yedek;
+ *    eşzamanlı istekler kilitle sıraya girer, her yazım kendi geçici dosyasını kullanır)
  *  - /api/videos  : video listesi (GET) ve yükleme (POST ?name=)
  *
  * Yalnızca 127.0.0.1'e bağlanır; dışarıdan erişilemez.
@@ -56,6 +57,21 @@
 #define IO_CHUNK       65536
 
 static FILE *g_log = NULL;
+
+/* db.json okuma/değiştirme kilidi + benzersiz geçici dosya sayacı */
+#ifdef _WIN32
+static CRITICAL_SECTION g_db_lock;
+static volatile LONG g_tmp_seq = 0;
+#define DB_LOCK()   EnterCriticalSection(&g_db_lock)
+#define DB_UNLOCK() LeaveCriticalSection(&g_db_lock)
+#define NEXT_SEQ()  ((long)InterlockedIncrement(&g_tmp_seq))
+#else
+static pthread_mutex_t g_db_lock = PTHREAD_MUTEX_INITIALIZER;
+static volatile long g_tmp_seq = 0;
+#define DB_LOCK()   pthread_mutex_lock(&g_db_lock)
+#define DB_UNLOCK() pthread_mutex_unlock(&g_db_lock)
+#define NEXT_SEQ()  (__sync_add_and_fetch(&g_tmp_seq, 1))
+#endif
 
 /* ---------------------------------------------------------------- yardımcılar */
 
@@ -188,7 +204,7 @@ static void respond_json(sock_t s, int code, const char *status, const char *jso
     respond(s, code, status, "application/json; charset=utf-8", json, (off64)strlen(json));
 }
 
-static void send_file(sock_t s, const char *path, const char *range_hdr, int cache) {
+static void send_file(sock_t s, const char *path, const char *range_hdr, int cache, int head) {
     off64 size = file_size(path);
     if (size < 0) { respond_json(s, 404, "Not Found", "{\"error\":\"not_found\"}"); return; }
     FILE *f = fopen(path, "rb");
@@ -228,7 +244,7 @@ static void send_file(sock_t s, const char *path, const char *range_hdr, int cac
             "HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %lld\r\nAccept-Ranges: bytes\r\n%s\r\nConnection: close\r\n\r\n",
             mime_of(path), (long long)len, cache ? "Cache-Control: max-age=86400" : "Cache-Control: no-cache");
     }
-    if (send_all(s, h, n) == 0 && len > 0) {
+    if (send_all(s, h, n) == 0 && len > 0 && !head) {
         char *buf = (char *)malloc(IO_CHUNK);
         if (buf) {
             FSEEK64(f, start, SEEK_SET);
@@ -248,7 +264,12 @@ static void send_file(sock_t s, const char *path, const char *range_hdr, int cac
 
 static int replace_file(const char *tmp, const char *dst) {
 #ifdef _WIN32
-    return MoveFileExA(tmp, dst, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) ? 0 : -1;
+    /* Antivirüs/indeksleyici dosyayı kısa süre tutabilir → birkaç kez dene */
+    for (int i = 0; i < 8; i++) {
+        if (MoveFileExA(tmp, dst, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return 0;
+        Sleep(40);
+    }
+    return -1;
 #else
     return rename(tmp, dst);
 #endif
@@ -379,23 +400,33 @@ static void handle(sock_t s) {
         respond_json(s, 200, "OK", "{\"ok\":true}");
     }
     else if (strcmp(path, "/api/db") == 0 && strcmp(method, "GET") == 0) {
+        DB_LOCK();
         if (file_size("data/db.json") < 0) respond_json(s, 404, "Not Found", "{\"error\":\"empty\"}");
-        else send_file(s, "data/db.json", NULL, 0);
+        else send_file(s, "data/db.json", NULL, 0, 0);
+        DB_UNLOCK();
     }
     else if (strcmp(path, "/api/db") == 0 && strcmp(method, "PUT") == 0) {
         if (content_len <= 0 || content_len > MAX_DB_BYTES) respond_json(s, 413, "Too Large", "{\"error\":\"size\"}");
         else {
+            /* Gövde kilitsiz ve istek başına ayrı dosyaya alınır; yalnızca yedek + yer değiştirme kilitli */
+            char tmp[64];
+            snprintf(tmp, sizeof tmp, "data/db.%ld.tmp", (long)NEXT_SEQ());
             MKDIR("data");
-            daily_backup();
-            if (receive_body_to_file(s, pre, pre_len, content_len, "data/db.json.tmp") == 0) {
-                FILE *chk = fopen("data/db.json.tmp", "rb");
+            if (receive_body_to_file(s, pre, pre_len, content_len, tmp) == 0) {
+                FILE *chk = fopen(tmp, "rb");
                 int first = chk ? fgetc(chk) : EOF;
                 if (chk) fclose(chk);
-                if (first == '{' && replace_file("data/db.json.tmp", "data/db.json") == 0)
-                    respond_json(s, 200, "OK", "{\"ok\":true}");
-                else { remove("data/db.json.tmp"); respond_json(s, 400, "Bad Request", "{\"error\":\"invalid\"}"); }
+                int ok = 0;
+                if (first == '{') {
+                    DB_LOCK();
+                    daily_backup();
+                    ok = replace_file(tmp, "data/db.json") == 0;
+                    DB_UNLOCK();
+                }
+                if (ok) respond_json(s, 200, "OK", "{\"ok\":true}");
+                else { remove(tmp); respond_json(s, 400, "Bad Request", "{\"error\":\"invalid\"}"); }
             } else {
-                remove("data/db.json.tmp");
+                remove(tmp);
                 respond_json(s, 500, "Error", "{\"error\":\"write_failed\"}");
                 log_msg("db yazilamadi", NULL);
             }
@@ -433,10 +464,10 @@ static void handle(sock_t s) {
         char fs[2100];
         if (strncmp(path, "/videos/", 8) == 0) {
             snprintf(fs, sizeof fs, "videos/%s", path + 8);
-            send_file(s, fs, range[0] ? range : NULL, 1);
+            send_file(s, fs, range[0] ? range : NULL, 1, method[0] == 'H');
         } else {
             snprintf(fs, sizeof fs, "app%s%s", path, (path[strlen(path) - 1] == '/') ? "index.html" : "");
-            send_file(s, fs, NULL, 0);
+            send_file(s, fs, NULL, 0, method[0] == 'H');
         }
     }
     else {
@@ -489,6 +520,7 @@ int main(int argc, char **argv) {
     g_log = fopen("data/server.log", "a");
 
 #ifdef _WIN32
+    InitializeCriticalSection(&g_db_lock);
     WSADATA w;
     if (WSAStartup(MAKEWORD(2, 2), &w) != 0) return 1;
 #else
