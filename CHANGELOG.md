@@ -3,6 +3,17 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.5.0] - 2026-11-08
+
+### Eklendi
+- Üye ekranında vücut haritası: anatomik kas çizimi üzerinde kol, göğüs, bel, kalça ve bacak ölçüleri; her bölgede son değer ve değişim. Bölgeye veya etikete dokununca o kas grubu mavi parlar ve ölçünün grafiği açılır.
+- Özet satırı: seçilen dönemde en çok değişen ölçüler (ör. "3 ayda: Bel −8 cm · Kol +3 cm").
+- Dönem seçimi: Başlangıçtan / Son 3 ay / Son ölçümden. Grafik ve farklar seçilen döneme göre hesaplanır.
+- Eğitmen panelinde üye sayfasına değişim çubukları: her ölçü için "35 → 38 cm (+3 · +8,6%)" ve yüzde değişimi gösteren çubuk.
+
+### Değişti
+- Ölçüm değişimleri artık nötr renkte (▲/▼) gösteriliyor; hangi yönün iyi sayılacağı üyenin hedefine göre değiştiği için yeşil/turuncu yorum kaldırıldı.
+
 ## [1.4.0] - 2026-09-27
 
 ### Eklendi

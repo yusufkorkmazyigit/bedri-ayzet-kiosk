@@ -1,4 +1,4 @@
-/* Üye ekranı: solda eğitmenin atadığı program, sağda ölçüm takibi. */
+/* Üye ekranı: solda eğitmenin atadığı program, sağda ölçüm takibi (vücut haritası + grafik). */
 (function () {
   'use strict';
   var BA = window.BA, esc = BA.esc, icon = BA.icon;
@@ -7,7 +7,8 @@
     var m = BA.store.member(BA.app.session.memberId);
     if (!m) { BA.app.logout(); return {}; }
     var dayIdx = 0;
-    var metric = 'weight';
+    var metric = 'arm';
+    var period = 'all';
     var ms = BA.store.sortedMeasurements(m);
 
     var first = String(m.name || '').split(' ')[0];
@@ -40,7 +41,8 @@
           var it = m.program.days[dayIdx].items[+el.getAttribute('data-i')];
           BA.showExercise(it.exerciseId, it);
         },
-        metric: function (el) { metric = el.getAttribute('data-k'); renderProgress(); }
+        metric: function (el) { metric = el.getAttribute('data-k'); renderProgress(); },
+        period: function (el) { period = el.getAttribute('data-p'); renderProgress(); }
       }
     };
 
@@ -82,49 +84,45 @@
           '<div class="empty">' + icon('ruler') + '<b>Henüz ölçüm girilmedi</b><span>İlk ölçümünü eğitmenine aldırdığında gelişimini burada takip edebilirsin.</span></div>';
         return;
       }
+      var P = BA.progress;
+      var prog = P.compute(ms, period);
       var last = ms[ms.length - 1];
       var h = latest('height');
-      var w = last.weight != null ? last.weight : latest('weight');
+      var w = latest('weight');
       var bmi = h && w ? w / Math.pow(h / 100, 2) : null;
+      if (!prog[metric]) metric = Object.keys(prog).filter(function (k) { return !prog[k].def.noChart; })[0];
+      if (!metric) { metric = 'arm'; progrEl.innerHTML = panelHead('Gelişimim', '') + '<div class="empty">' + icon('ruler') + '<b>Takip edilecek ölçü yok</b></div>'; return; }
 
-      var tiles = BA.METRICS.filter(function (d) { return !d.noChart && latest(d.key) != null; }).map(function (d) {
-        var series = seriesOf(d.key);
-        var delta = series.length > 1 ? series[series.length - 1].value - series[0].value : null;
+      // Haritada olmayan ölçüler (kilo, yağ oranı) küçük kutucuk olarak
+      var tiles = BA.METRICS.filter(function (d) { return !d.noChart && prog[d.key] && P.MAP_KEYS.indexOf(d.key) < 0; }).map(function (d) {
+        var it = prog[d.key];
         return '<button class="tile' + (metric === d.key ? ' is-on' : '') + '" data-act="metric" data-k="' + d.key + '">' +
           '<span class="tile__lbl">' + esc(d.label) + '</span>' +
-          '<span class="tile__val">' + BA.fmtNum(series[series.length - 1].value) + '<small>' + d.unit + '</small></span>' +
-          deltaHtml(delta, d) +
-        '</button>';
-      }).join('');
+          '<span class="tile__val">' + BA.fmtNum(it.to) + '<small>' + d.unit + '</small></span>' + P.deltaHtml(it) + '</button>';
+      }).join('') +
+        (bmi ? '<div class="tile tile--static"><span class="tile__lbl">Vücut kitle indeksi</span>' +
+          '<span class="tile__val">' + BA.fmtNum(bmi) + '</span><span class="delta">' + bmiLabel(bmi) + '</span></div>' : '');
 
-      var md = BA.METRICS.filter(function (d) { return d.key === metric; })[0];
+      var it = prog[metric], md = it.def;
+      var same = it.delta == null || Math.abs(it.delta) < 0.05;
+      var head = same ? BA.fmtNum(it.to) + ' ' + md.unit + (it.delta != null ? ' · değişmedi' : '') :
+        BA.fmtNum(it.from) + ' → ' + BA.fmtNum(it.to) + ' ' + md.unit + ' <i>(' + P.deltaText(it.delta, '') + ')</i>';
       progrEl.innerHTML =
         panelHead('Gelişimim', 'Vücut ölçülerim',
           'Son ölçüm ' + BA.fmtDate(last.date) + ' · ' + ms.length + ' ölçüm' + (h ? ' · Boy ' + BA.fmtNum(h, 0) + ' cm' : '')) +
-        '<div class="tiles">' + tiles +
-          (bmi ? '<div class="tile tile--static"><span class="tile__lbl">Vücut kitle indeksi</span>' +
-            '<span class="tile__val">' + BA.fmtNum(bmi) + '</span><span class="delta">' + bmiLabel(bmi) + '</span></div>' : '') +
-        '</div>' +
-        '<div class="chartbox"><div class="chartbox__head"><b>' + esc(md.label) + '</b><span>İlk ölçümden bugüne · noktalara dokun</span></div>' +
+        (ms.length > 1 ? P.periodSeg(period) : '') +
+        P.summary(prog) +
+        '<div class="bmrow">' + P.bodyMap(prog, metric) + '<div class="tiles tiles--col">' + tiles + '</div></div>' +
+        '<div class="chartbox"><div class="chartbox__head"><b>' + esc(md.label) + '</b><span>' + head +
+          (it.delta != null ? ' · ' + esc(P.span(it.fromDate, it.toDate)) : '') + '</span></div>' +
         '<div class="chartbox__plot" data-ref="plot"></div></div>';
 
-      BA.lineChart(progrEl.querySelector('[data-ref=plot]'), seriesOf(metric), { unit: md.unit, label: md.label });
+      BA.lineChart(progrEl.querySelector('[data-ref=plot]'), it.series, { unit: md.unit, label: md.label, height: 150 });
     }
 
-    function seriesOf(key) {
-      return ms.filter(function (x) { return x[key] != null && x[key] !== ''; })
-        .map(function (x) { return { date: x.date, value: +x[key] }; });
-    }
     function latest(key) {
       for (var i = ms.length - 1; i >= 0; i--) if (ms[i][key] != null && ms[i][key] !== '') return +ms[i][key];
       return null;
-    }
-    function deltaHtml(delta, d) {
-      if (delta == null) return '<span class="delta">ilk ölçüm</span>';
-      if (Math.abs(delta) < 0.05) return '<span class="delta">değişim yok</span>';
-      var dir = d.dir === 'goal' ? (m.goal === 'Kilo verme' ? -1 : m.goal === 'Kas kazanımı' ? 1 : 0) : d.dir;
-      var good = dir === 0 ? '' : (delta * dir > 0 ? ' is-good' : ' is-bad');
-      return '<span class="delta' + good + '">' + (delta > 0 ? '▲ +' : '▼ −') + BA.fmtNum(Math.abs(delta)) + ' ' + d.unit + '</span>';
     }
   };
 

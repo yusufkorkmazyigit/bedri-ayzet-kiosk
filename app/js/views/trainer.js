@@ -188,6 +188,8 @@
     if (!m) { BA.app.go('trainer', { tab: 'members' }); return; }
     var ms = S().sortedMeasurements(m);
     var p = m.program;
+    var per = params.per || 'all';
+    var prog = BA.progress.compute(ms, per);
 
     var progHtml = p && p.days && p.days.length ?
       '<div class="pcard__title"><b>' + esc(p.name) + '</b><span>' + p.days.length + ' gün · ' + BA.fmtDate(p.assignedAt) + ' tarihinde atandı</span></div>' +
@@ -241,15 +243,17 @@
         '</section>' +
         '<section class="card">' +
           '<header class="card__head"><h2>Vücut Ölçümleri</h2><button class="btn btn--primary" data-act="newMeas">' + icon('plus') + 'Yeni ölçüm</button></header>' +
+          (ms.length > 1 ? '<div class="pgrow">' + BA.progress.periodSeg(per, 'measPeriod') + BA.progress.summary(prog) + '</div>' + BA.progress.bars(prog) : '') +
           table +
         '</section>' +
       '</div>';
 
-    function reload() { BA.app.go('trainer', { tab: 'member', id: m.id }); }
+    function reload() { BA.app.go('trainer', { tab: 'member', id: m.id, per: per }); }
 
     return {
       actions: {
         editMember: function () { memberForm(m); },
+        measPeriod: function (el) { BA.app.go('trainer', { tab: 'member', id: m.id, per: el.getAttribute('data-p') }); },
         editEnd: function () { endForm(m, reload); },
         renew: function () { renewForm(m, reload); },
         delMember: function () {
