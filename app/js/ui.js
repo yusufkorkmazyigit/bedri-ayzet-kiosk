@@ -167,7 +167,7 @@
     var m = BA.modal({
       cls: 'modal--pad modal--code',
       title: 'Kodla Ara',
-      subtitle: 'Programındaki hareket kodunu yaz (ör. A1,1).',
+      subtitle: 'Hareket kodunu yaz: A1, A1A (A-1 [A]) ya da A1,1.',
       body:
         '<div class="pad pad--code"><div class="pad__col">' +
           '<div class="pad__display" data-ref="disp"></div>' +
@@ -181,10 +181,12 @@
             if (k === '<') return '<button class="pad__key pad__key--fn" data-act="bs" aria-label="Geri">' + icon('backspace') + '</button>';
             return '<button class="pad__key' + (k === ',' ? ' pad__key--fn' : '') + '" data-act="k" data-k="' + k + '">' + k + '</button>';
           }).join('') + '</div>' +
+          '<button class="btn btn--ghost btn--block" data-act="clr">Temizle</button>' +
         '</div></div>',
       actions: {
         k: function (el) { press(el.getAttribute('data-k')); },
         bs: function () { val = val.slice(0, -1); paint(); },
+        clr: function () { val = ''; paint(); },
         go: go,
         pick: function (el) { open(el.getAttribute('data-id')); }
       },
@@ -193,21 +195,38 @@
     var disp = m.el.querySelector('[data-ref=disp]'), res = m.el.querySelector('[data-ref=res]');
     var found = [];
 
+    /* Durum: grup harfi + sayı + (varyasyon harfi | ,sıra) */
     function press(k) {
-      if (val.length >= 8) return;
-      if (/[A-ZÇĞÖŞÜ]/.test(k) && /\d/.test(val)) val = '';   // rakamdan sonra harf → yeni kod
-      if (k === ',' && (!/\d$/.test(val) || val.indexOf(',') >= 0)) return;
-      val += k; paint();
+      var isL = /[A-ZÇĞİÖŞÜ]/.test(k), hasNum = /\d/.test(val), hasTail = /[A-ZÇĞİÖŞÜ]$|,/.test(val.replace(/^[A-ZÇĞÖŞÜ]+/, ''));
+      if (isL) {
+        if (!hasNum || hasTail) val = k;            // yeni kod
+        else val += k;                              // A1 + A → A-1 [A]
+      } else if (k === ',') {
+        if (!hasNum || hasTail) return;
+        val += ',';
+      } else {
+        if (!val) return;                           // önce harf
+        if (/[A-ZÇĞİÖŞÜ]$/.test(val) && hasNum) return; // varyasyon harfinden sonra rakam yok
+        if (val.length >= 7) return;
+        val += k;
+      }
+      paint();
+    }
+    function label(v) {
+      var mm = /^([A-ZÇĞÖŞÜ]+)(\d*)([A-ZÇĞİÖŞÜ]?)(,?\d*)$/.exec(v);
+      if (!mm) return esc(v);
+      return esc(mm[1]) + (mm[2] ? '-' + mm[2] : '') + (mm[3] ? ' [' + mm[3] + ']' : '') + esc(mm[4]);
     }
     function paint() {
-      disp.innerHTML = val ? esc(val) : '<span class="ph">A1,1</span>';
+      disp.innerHTML = val ? label(val) : '<span class="ph">A-1 [A]</span>';
       disp.classList.remove('is-error');
-      found = val ? BA.store.searchCode(val, 6) : [];
+      found = val ? BA.store.searchCode(val.replace(/,$/, ''), 60) : [];
       if (!hasCodes) { res.innerHTML = '<p class="cres__msg">Henüz kodlu hareket yok. Eğitmen panelinden kod listesi eklenebilir.</p>'; return; }
       res.innerHTML = !val ? '<p class="cres__msg">Harf ve rakamlara dokun; eşleşen hareketler burada çıkar.</p>' :
-        found.length ? found.map(function (e) {
-          return '<button class="cres__row" data-act="pick" data-id="' + esc(e.id) + '">' + BA.codeChip(e) + '<b>' + esc(e.name) + '</b>' + icon('play') + '</button>';
+        found.length ? found.map(function (e, i) {
+          return '<button class="cres__row' + (i === 0 ? ' is-top' : '') + '" data-act="pick" data-id="' + esc(e.id) + '">' + BA.codeChip(e) + '<b>' + esc(e.name) + '</b>' + icon('play') + '</button>';
         }).join('') : '<p class="cres__msg">Bu kodla hareket bulunamadı.</p>';
+      res.scrollTop = 0;
     }
     function go() {
       if (!found.length) { disp.classList.add('is-error'); shake(disp); return; }
@@ -216,7 +235,7 @@
     function open(id) { m.close(); BA.showExercise(id); }
     function onKey(e) {
       if (m.closed || BA.modal.top() !== m) return;
-      var k = e.key.length === 1 ? e.key.toLocaleUpperCase('tr').replace('İ', 'I') : e.key;
+      var k = e.key.length === 1 ? e.key.replace('i', 'İ').replace('ı', 'I').toUpperCase() : e.key;
       if (/^[0-9A-ZÇĞÖŞÜ]$/.test(k)) press(k);
       else if (k === ',' || k === '.') press(',');
       else if (k === 'Backspace') { val = val.slice(0, -1); paint(); }
@@ -245,7 +264,7 @@
         return '<section class="pr__day"><h2>' + esc(d.name) + '</h2><table><thead><tr><th>#</th><th>Kod</th><th>Hareket</th><th>Set</th><th>Tekrar</th><th>Dinlenme</th><th>Not</th></tr></thead><tbody>' +
           d.items.map(function (it, i) {
             var ex = BA.store.exercise(it.exerciseId) || { name: 'Silinmiş hareket' };
-            return '<tr><td>' + (i + 1) + '</td><td class="pr__code">' + esc(ex.code || '—') + '</td><td>' + esc(ex.name) + '</td><td>' + esc(it.sets) +
+            return '<tr><td>' + (i + 1) + '</td><td class="pr__code">' + esc(ex.code ? BA.codeLabel(ex.code) : '—') + '</td><td>' + esc(ex.name) + '</td><td>' + esc(it.sets) +
               '</td><td>' + esc(it.reps) + '</td><td>' + (it.rest ? esc(it.rest) + ' sn' : '—') + '</td><td>' + esc(it.note || '') + '</td></tr>';
           }).join('') + '</tbody></table></section>';
       }).join('') +
@@ -277,10 +296,22 @@
         stat('Set', plan.sets) + stat('Tekrar', plan.reps) + stat('Dinlenme', plan.rest ? plan.rest + ' sn' : '—') +
       '</div>' + (plan.note ? '<p class="note">' + icon('edit') + esc(plan.note) + '</p>' : '') : '';
 
+    // Aynı hareketin çeşitleri (A-1, A-1 [A], A-1 [B] …): pencere içinden geçiş
+    var family = ex.code ? BA.store.variantsOf(ex.code) : [];
+    var main = family.filter(BA.store.isMain)[0];
+    var famHtml = family.length > 1 ?
+      '<div class="vars"><h3 class="eyebrow">Bu hareketin çeşitleri</h3><div class="vars__list">' + family.map(function (f) {
+        var v = /\[(.)\]$/.exec(f.code);
+        return '<button class="vars__b' + (f.id === ex.id ? ' is-on' : '') + '" data-act="variant" data-id="' + esc(f.id) + '">' +
+          '<b>' + (v ? esc(v[1]) : 'Ana') + '</b><span>' + esc(f.name) + '</span></button>';
+      }).join('') + '</div></div>' : '';
+    var steps = ex.steps && ex.steps.length ?
+      '<h3 class="eyebrow">Nasıl yapılır?</h3><ol class="steps">' + ex.steps.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' : '';
+
     var m = BA.modal({
       cls: 'modal--ex',
-      title: ex.name,
-      subtitle: [ex.code ? 'Kod ' + ex.code : '', region.name, ex.equipment, ex.level].filter(Boolean).join(' · '),
+      title: (ex.code ? BA.codeLabel(ex.code) + ' · ' : '') + ex.name,
+      subtitle: [main && main !== ex ? main.name : '', region.name, ex.equipment, ex.level].filter(Boolean).join(' · '),
       body:
         '<div class="ex">' +
           '<div class="ex__media" data-ref="media">' +
@@ -288,14 +319,20 @@
               '<video data-ref="video" src="' + esc(src) + '" autoplay muted loop playsinline controls preload="auto" disablepictureinpicture controlslist="nodownload noplaybackrate noremoteplayback"></video>' :
               fallbackHtml()) +
           '</div>' +
-          '<div class="ex__info">' + planHtml +
-            '<h3 class="eyebrow">Nasıl yapılır?</h3>' +
-            '<ol class="steps">' + (ex.steps || []).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+          '<div class="ex__info">' + planHtml + famHtml + steps +
             (ex.mistakes && ex.mistakes.length ?
               '<h3 class="eyebrow eyebrow--warn">Sık yapılan hatalar</h3><ul class="mistakes">' +
               ex.mistakes.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' : '') +
           '</div>' +
         '</div>',
+      actions: {
+        variant: function (el) {
+          var id = el.getAttribute('data-id');
+          if (id === ex.id) return;
+          m.close();
+          BA.showExercise(id);
+        }
+      },
       onClose: function () {
         clearInterval(timer);
         // Zayıf donanımda kod çözücüyü hemen serbest bırak
@@ -314,7 +351,7 @@
       if (!photos.length) return noVideo();
       return '<div class="photos">' + photos.map(function (u, i) {
         return '<img src="' + esc(u) + '" alt="" decoding="async" class="' + (i === 0 ? 'is-on' : '') + '">';
-      }).join('') + '<div class="photos__cap"><b data-ref="cap">Başlangıç</b><span>Fotoğraflı anlatım</span></div></div>';
+      }).join('') + (photos.length > 1 ? '<div class="photos__cap"><b data-ref="cap">Başlangıç</b><span>Fotoğraflı anlatım</span></div>' : '') + '</div>';
     }
     function startPhotos() {
       var imgs = media.querySelectorAll('.photos img');

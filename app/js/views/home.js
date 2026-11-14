@@ -51,7 +51,7 @@
       '<section class="regions">' + BA.REGIONS.map(function (r, i) {
         var n = counts[r.id] || 0;
         return '<button class="rcard" data-act="region" data-id="' + r.id + '">' +
-          '<span class="rcard__no">' + (i < 9 ? '0' : '') + (i + 1) + '</span>' +
+          '<span class="rcard__no' + (r.code ? ' rcard__no--code' : '') + '">' + (r.code ? esc(r.code) : (i < 9 ? '0' : '') + (i + 1)) + '</span>' +
           '<span class="rcard__ico">' + BA.regionIcon(r) + '</span>' +
           '<span class="rcard__body"><b>' + esc(r.name) + '</b><span>' + esc(r.hint) + '</span></span>' +
           '<span class="rcard__foot"><span>' + n + ' hareket</span>' + icon('arrow') + '</span>' +
@@ -59,25 +59,43 @@
       }).join('') + '</section>';
   }
 
+  /* Bölge sayfası: her ana hareket tek kart (çeşitleri hareket penceresinde seçilir).
+     Ana hareketi olmayan varyasyon grupları ilk varyasyonla temsil edilir. */
   function regionView(region) {
     var list = BA.store.exercisesIn(region.id);
+    var groups = [], byBase = {};
+    list.forEach(function (e) {
+      var key = e.code ? BA.codeBase(e.code) : '#' + e.id;
+      if (!byBase[key]) { byBase[key] = { key: key, items: [] }; groups.push(byBase[key]); }
+      byBase[key].items.push(e);
+    });
     return '<section class="region-head">' +
         '<button class="btn btn--ghost btn--icon" data-act="backHome" aria-label="Geri">' + icon('back') + '</button>' +
         '<div class="region-head__ico">' + BA.regionIcon(region) + '</div>' +
-        '<div><p class="eyebrow">' + list.length + ' hareket</p><h1>' + esc(region.name) + '</h1></div>' +
+        '<div><p class="eyebrow">' + (region.code ? 'Kod ' + esc(region.code) + ' · ' : '') + groups.length + ' hareket' +
+          (list.length > groups.length ? ', ' + list.length + ' çeşit' : '') + '</p><h1>' + esc(region.name) + '</h1></div>' +
+        '<button class="btn btn--ghost region-head__code" data-act="codeSearch">' + icon('search') + '<span>Kodla Ara</span></button>' +
       '</section>' +
-      (list.length ? '<section class="exgrid">' + list.map(exCard).join('') + '</section>' :
+      (groups.length ? '<section class="exgrid">' + groups.map(function (g) {
+        var main = g.items.filter(BA.store.isMain)[0] || g.items[0];
+        return exCard(main, g.items.length - 1, g.key.charAt(0) !== '#' ? g.key : '');
+      }).join('') + '</section>' :
         '<div class="empty">' + icon('film') + '<b>Bu bölgede henüz hareket yok</b><span>Eğitmen panelinden hareket eklenebilir.</span></div>');
   }
 
-  function exCard(ex) {
+  function exCard(ex, more, base) {
     var has = BA.store.hasVideo(ex);
-    var photo = BA.store.photoUrls(ex)[0];
+    var thumb = BA.store.thumbUrl(ex);
+    var label = base && !BA.store.isMain(ex) ? '<span class="code">' + esc(BA.codeLabel(base)) + '</span>' : BA.codeChip(ex);
     var badge = '<span class="excard__play' + (has === false ? ' is-off' : '') + '">' + icon(has === false ? 'film' : 'play') + '</span>';
     return '<button class="excard" data-act="ex" data-id="' + esc(ex.id) + '">' +
-      (photo ? '<span class="excard__thumb"><img src="' + esc(photo) + '" alt="" loading="lazy" decoding="async">' + badge + '</span>' : badge) +
-      '<span class="excard__body"><b>' + BA.codeChip(ex) + esc(ex.name) + '</b>' +
-        '<span class="chips"><i>' + esc(ex.equipment || '—') + '</i><i class="lvl lvl--' + BA.LEVELS.indexOf(ex.level) + '">' + esc(ex.level || '') + '</i></span>' +
+      (thumb ? '<span class="excard__thumb"><img src="' + esc(thumb) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' + badge + '</span>' : badge) +
+      '<span class="excard__body"><b>' + label + esc(ex.name) + '</b>' +
+        '<span class="chips">' + (more > 0 ? '<i class="chip-var">+' + more + ' çeşit</i>' : '') +
+          (ex.equipment ? '<i>' + esc(ex.equipment) + '</i>' : '') +
+          (ex.level ? '<i class="lvl lvl--' + BA.LEVELS.indexOf(ex.level) + '">' + esc(ex.level) + '</i>' : '') +
+          (!ex.video && (ex.image || ex.images) ? '<i>Fotoğraf</i>' : '') +
+        '</span>' +
       '</span>' +
       '<span class="excard__cta">' + (has === false ? 'Anlatım' : 'İzle') + '</span>' +
     '</button>';

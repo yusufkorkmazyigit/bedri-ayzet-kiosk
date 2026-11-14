@@ -3,6 +3,22 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.7.0] - 2026-11-14
+
+### Eklendi
+- Salonun hareket kütüphanesi: eski kioskun veritabanı ve klasörlerinden 433 hareket kod, ad ve video/fotoğrafıyla aktarıldı (`app/js/catalog.js`).
+- Videolar kiosk için hazırlandı: tek tip H.264 MP4 (en fazla 720p, sessiz, hızlı başlangıç); eski FLV/TS/WebM/GIF dosyaları dönüştürüldü. Toplam boyut 325 MB'tan 48 MB'a indi. Her hareket için küçük önizleme resmi.
+- Bölgeler salonun kod harflerine göre yeniden düzenlendi: A Omuz, B Göğüs, C Kanat, D Arka Kol, E Pazu, F Bacak, G Mide & Karın, H Oblik, K Bilek, M Deadlift, O Plank & Şınav, Kardiyo. Ana ekranda kod harfi rozet olarak görünür.
+- Bölge sayfasında her ana hareket tek kart ("+3 çeşit"); hareket penceresinde çeşitler arasında geçiş.
+- Eğitmen panelinde hareket kütüphanesi araması (kod veya ad).
+
+### Değişti
+- Kod biçimi eski kioskla aynı: `A-1` ve `A-1 [A]`. `A1,1` yazımı o hareketin 1. çeşidi olarak tanınır.
+- Kodla Ara: çeşit harfi yazılabiliyor (A1 + A → A-1 [A]), sonuç listesi kaydırılabilir, "Temizle" tuşu.
+- Hareket görselleri açık zeminli tek tip çerçevede gösteriliyor (dosyaların kendisi değiştirilmedi).
+- Örnek şablonlar salon kodlarıyla yeniden yazıldı; örnek hareket kütüphanesi (kardiyo hariç) kaldırıldı.
+- Eski kayıtlar otomatik taşınır: eski bölge kimlikleri (sırt, kol, kalça) yeni bölgelere aktarılır.
+
 ## [1.6.0] - 2026-11-08
 
 ### Eklendi

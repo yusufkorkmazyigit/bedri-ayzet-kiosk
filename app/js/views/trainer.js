@@ -226,7 +226,7 @@
       '<div class="pcard__title"><b>' + esc(p.name) + '</b><span>' + p.days.length + ' gün · ' + BA.fmtDate(p.assignedAt) + ' tarihinde atandı</span></div>' +
       p.days.map(function (d) {
         return '<div class="pday"><b>' + esc(d.name) + '</b><span>' + d.items.map(function (it) {
-          var ex = S().exercise(it.exerciseId); return ex ? (ex.code ? '<b class="code-t">' + esc(ex.code) + '</b> ' : '') + esc(ex.name) : '';
+          var ex = S().exercise(it.exerciseId); return ex ? (ex.code ? '<b class="code-t">' + esc(BA.codeLabel(ex.code)) + '</b> ' : '') + esc(ex.name) : '';
         }).filter(Boolean).join(' · ') + '</span></div>';
       }).join('') :
       '<div class="empty empty--sm">' + icon('list') + '<b>Program atanmadı</b></div>';
@@ -566,39 +566,58 @@
   /* ================================================================ HAREKETLER */
   PAGES.exercises = function (main, params) {
     var reg = params.region || 'all';
+    var q = '';
     var server = S().mode === 'server';
 
     function render() {
-      var list = S().db.exercises.filter(function (e) { return reg === 'all' || e.region === reg; })
-        .sort(function (a, b) {
-          var ra = BA.REGIONS.indexOf(BA.regionById(a.region)), rb = BA.REGIONS.indexOf(BA.regionById(b.region));
-          return ra - rb || S().exCmp(a, b);
-        });
-      var missing = S().db.exercises.filter(function (e) { return S().hasVideo(e) === false; }).length;
+      var missing = S().db.exercises.filter(function (e) { return S().hasVideo(e) === false && !S().photoUrls(e).length; }).length;
       main.innerHTML = pageHead('Hareket Kütüphanesi',
-          S().db.exercises.length + ' hareket' + (server ? ' · ' + missing + ' tanesinin videosu eksik' : ''),
+          S().db.exercises.length + ' hareket' + (server ? ' · ' + missing + ' tanesinin videosu ve fotoğrafı yok' : ''),
           '<button class="btn btn--ghost" data-act="codeList">' + icon('list') + '<span>Kod listesi ekle</span></button>' +
           '<button class="btn btn--primary" data-act="newEx">' + icon('plus') + '<span>Yeni Hareket</span></button>') +
+        '<div class="exfilter"><input type="text" data-ref="q" value="' + esc(q) + '" autocomplete="off" spellcheck="false" placeholder="Kod veya ad ile ara (ör. A1, bench)"></div>' +
         '<div class="chipbar">' + [{ id: 'all', name: 'Tümü' }].concat(BA.REGIONS).map(function (r) {
-          return '<button class="chip' + (reg === r.id ? ' is-on' : '') + '" data-act="reg" data-id="' + r.id + '">' + esc(r.name) + '</button>';
+          return '<button class="chip' + (reg === r.id ? ' is-on' : '') + '" data-act="reg" data-id="' + r.id + '">' + (r.code ? '<b class="chip__code">' + esc(r.code) + '</b>' : '') + esc(r.name) + '</button>';
         }).join('') + '</div>' +
-        '<div class="exlist">' + list.map(function (e) {
-          var has = S().hasVideo(e);
-          return '<div class="exrow">' +
-            '<button class="exrow__main" data-act="preview" data-id="' + esc(e.id) + '">' +
-              '<span class="vstat vstat--' + (has === true ? 'on' : has === false ? 'off' : 'unk') + '">' + icon(has === false ? 'film' : 'play') + '</span>' +
-              '<span class="exrow__name"><b>' + BA.codeChip(e) + esc(e.name) + '</b><span>' + esc(BA.regionById(e.region).name) + ' · ' + esc(e.equipment || '') + ' · ' + esc(e.level || '') + '</span></span>' +
-              '<span class="exrow__file">' + (e.video ? esc(e.video) : '<em>video yok</em>') + (has === false && e.video ? '<small>dosya bulunamadı</small>' : '') + '</span>' +
-            '</button>' +
-            '<button class="icon-btn" data-act="editEx" data-id="' + esc(e.id) + '" aria-label="Düzenle">' + icon('edit') + '</button>' +
-          '</div>';
-        }).join('') + '</div>';
+        '<div class="exlist" data-ref="list"></div>';
+      var qi = main.querySelector('[data-ref=q]');
+      qi.addEventListener('input', BA.debounce(function () { q = qi.value.trim(); paintList(); }, 150));
+      paintList();
+    }
+
+    function paintList() {
+      var n = BA.norm(q), byCode = q ? S().searchCode(q, 400) : null, codeHit = {};
+      if (byCode) byCode.forEach(function (e) { codeHit[e.id] = 1; });
+      var list = S().db.exercises.filter(function (e) {
+        if (reg !== 'all' && e.region !== reg) return false;
+        return !q || codeHit[e.id] || BA.norm(e.name).indexOf(n) >= 0;
+      }).sort(function (a, b) {
+        var ra = BA.REGIONS.indexOf(BA.regionById(a.region)), rb = BA.REGIONS.indexOf(BA.regionById(b.region));
+        return ra - rb || S().exCmp(a, b);
+      });
+      var shown = list.slice(0, 250);
+      main.querySelector('[data-ref=list]').innerHTML = shown.map(function (e) {
+        var has = S().hasVideo(e), photo = !e.video && (e.image || e.images);
+        return '<div class="exrow">' +
+          '<button class="exrow__main" data-act="preview" data-id="' + esc(e.id) + '">' +
+            '<span class="vstat vstat--' + (has === true || photo ? 'on' : has === false ? 'off' : 'unk') + '">' + icon(has === false && !photo ? 'film' : 'play') + '</span>' +
+            '<span class="exrow__name"><b>' + BA.codeChip(e) + esc(e.name) + '</b><span>' + esc([BA.regionById(e.region).name, e.equipment, e.level].filter(Boolean).join(' · ')) + '</span></span>' +
+            '<span class="exrow__file">' + (e.video ? esc(e.video) : photo ? esc(e.image || e.images[0]) + '<small>fotoğraf</small>' : '<em>video yok</em>') + (has === false && e.video ? '<small>dosya bulunamadı</small>' : '') + '</span>' +
+          '</button>' +
+          '<button class="icon-btn" data-act="editEx" data-id="' + esc(e.id) + '" aria-label="Düzenle">' + icon('edit') + '</button>' +
+        '</div>';
+      }).join('') + (list.length > shown.length ? '<p class="muted exlist__more">' + (list.length - shown.length) + ' hareket daha var — aramayı daraltın.</p>' : '') +
+        (!list.length ? '<div class="empty empty--sm"><b>Eşleşen hareket yok</b></div>' : '');
     }
     render();
 
     return {
       actions: {
-        reg: function (el) { reg = el.getAttribute('data-id'); BA.app.params.region = reg; render(); },
+        reg: function (el) {
+          reg = el.getAttribute('data-id'); BA.app.params.region = reg;
+          main.querySelectorAll('.chipbar .chip').forEach(function (c) { c.classList.toggle('is-on', c.getAttribute('data-id') === reg); });
+          paintList();
+        },
         preview: function (el) { BA.showExercise(el.getAttribute('data-id')); },
         newEx: function () { exerciseForm(null, render, reg); },
         codeList: function () { codeListForm(render); },
@@ -680,7 +699,7 @@
       title: isNew ? 'Yeni Hareket' : 'Hareketi Düzenle',
       body: '<form class="form grid2" onsubmit="return false">' +
         BA.field('Hareket adı', 'name', d.name, { ph: 'Örn. Omuz yana açış' }) +
-        BA.field('Salon kodu', 'code', d.code || '', { ph: 'Örn. A1,1 (boş bırakılabilir)' }) +
+        BA.field('Salon kodu', 'code', d.code ? BA.codeLabel(d.code) : '', { ph: 'Örn. A-1 ya da A-1 [A] (boş bırakılabilir)' }) +
         BA.field('Bölge', 'region', d.region, { options: BA.REGIONS.map(function (r) { return { value: r.id, label: r.name }; }) }) +
         BA.field('Ekipman', 'equipment', d.equipment, { ph: 'Dumbbell, makine…' }) +
         BA.field('Seviye', 'level', d.level, { options: BA.LEVELS }) +
@@ -696,7 +715,7 @@
           var f = BA.formData(md.body);
           if (!f.name) return BA.toast('Hareket adı gerekli.', 'err');
           var code = BA.codeKey(f.code), other = code && S().byCode(code);
-          if (code && !/^[A-ZÇĞÖŞÜ]{1,3}\d{1,3}(,\d{1,3})?$/.test(code)) return BA.toast('Kod biçimi: harf + sayı, ör. A1,1', 'err');
+          if (code && !/^[A-ZÇĞÖŞÜ]{1,2}\d{1,3}(\[[A-ZÇĞİÖŞÜ]\])?$/.test(code)) return BA.toast('Kod biçimi: A-1 ya da varyasyon için A-1 [A]', 'err');
           if (other && other.id !== d.id) return BA.toast(code + ' kodu zaten “' + other.name + '” hareketinde.', 'err');
           var lines = function (s) { return s.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); };
           var rec = Object.assign({}, d, {

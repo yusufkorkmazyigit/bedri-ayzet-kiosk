@@ -845,3 +845,50 @@ html.lite .modal__card, html.lite .toast { box-shadow: none; }
   .pr__code { font-weight: 700; white-space: nowrap; }
   .pr__foot { margin-top: 12pt; font-size: 8.5pt; color: #555; }
 }
+
+/* ------------------------------------------------------------------ v1.7 SALON KÜTÜPHANESİ */
+/* Ana ekran: 12 bölge (4×3); kod harfi rozet olarak */
+.regions { grid-auto-rows: minmax(8.5rem, 1fr); }
+.rcard { padding: 1.15rem 1.35rem; }
+.rcard__no--code {
+  display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: .8rem;
+  background: var(--acc-dim); color: var(--acc); font-size: 1.25rem; font-weight: 800; letter-spacing: 0;
+}
+.rcard__foot { margin-top: .7rem; padding-top: .7rem; }
+.region-head__code { margin-left: auto; }
+
+/* Hareket kartı ve pencere: kaynak görsellerin çoğu açık zeminli → tek tip açık çerçeve */
+.excard__thumb { background: #f3f5f8; }
+.excard__thumb img { object-fit: contain; }
+.chips .chip-var { background: var(--acc-dim); color: var(--acc); border-color: transparent; font-weight: 700; }
+.ex__media, .ex__media video, .photos { background: #f3f5f8; }
+.ex__media { border: 1px solid var(--line2); }
+
+/* Hareketin çeşitleri */
+.vars { margin-bottom: 1.1rem; }
+.vars__list { display: flex; flex-direction: column; gap: .4rem; max-height: 19rem; overflow-y: auto; margin-top: .5rem; }
+.vars__b {
+  display: flex; align-items: center; gap: .7rem; min-height: 2.9rem; padding: 0 .8rem; flex: none; text-align: left;
+  border-radius: var(--r); background: var(--s2); border: 1px solid var(--line);
+}
+.vars__b b { flex: none; min-width: 2.6rem; height: 1.8rem; display: grid; place-items: center; border-radius: 8px; background: var(--s3); color: var(--acc); font-size: .85rem; }
+.vars__b span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--tx2); }
+.vars__b.is-on { border-color: var(--acc); box-shadow: inset 0 0 0 1px var(--acc); }
+.vars__b.is-on b { background: var(--acc); color: var(--acc-ink); }
+.vars__b.is-on span { color: var(--tx); }
+
+/* Kodla ara: çok sonuçta kaydırılabilir liste */
+.cres { overflow-y: auto; overscroll-behavior: contain; }
+.cres__row.is-top { border-color: var(--acc); }
+
+/* Eğitmen: hareket kütüphanesi araması */
+.exfilter input { max-width: 28rem; }
+.chip__code { color: var(--acc); margin-right: .35rem; }
+.chip.is-on .chip__code { color: var(--acc-ink); }
+.exlist__more { padding: .8rem 0; text-align: center; }
+
+@media (max-height: 800px) and (orientation: landscape) {
+  .regions { grid-auto-rows: minmax(7.4rem, 1fr); gap: 1rem; }
+  .rcard__ico { width: 3rem; height: 3rem; top: 1rem; right: 1rem; }
+  .rcard__body b { font-size: 1.5rem; }
+}

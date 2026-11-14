@@ -28,39 +28,44 @@ data/backups/            günlük otomatik yedekler
 server/kiosk-server.c    sunucunun kaynak kodu
 ```
 
-## Hareket videoları
+## Hareket kütüphanesi ve videolar
 
-İki yol var:
+Uygulama salonun kendi hareket kütüphanesiyle gelir: eski kiosktan aktarılan **433 hareket**
+(A Omuz, B Göğüs, C Kanat, D Arka kol, E Pazu, F Bacak, G Mide/Karın, H Oblik, K Bilek, M Deadlift,
+O Plank & Şınav) ve 4 kardiyo hareketi. Liste `app/js/catalog.js` dosyasındadır.
+
+Medya dosyaları depoda tutulmaz; kioskta `videos/` klasörüne konur:
+
+- `videos/a1.mp4`, `videos/a1-a.mp4` … hareket videoları (H.264, en fazla 720p, sessiz)
+- `videos/a1-c.jpg` … videosu olmayan hareketlerin fotoğrafı
+- `videos/thumbs/*.jpg` … kartlardaki küçük önizlemeler
+
+Dosya adı koddan gelir: `A-1` → `a1`, `A-1 [A]` → `a1-a` (İ → `i`, Ö → `o2`, Ç → `c2` …).
+Hazır paket `kiosk-medya` klasörü olarak USB ile getirilir; içeriğini kioskun `videos/` klasörüne kopyalamanız yeterli.
+
+Yeni ya da değiştirilmiş bir video için:
 
 - **Panelden:** Eğitmen Girişi → Hareketler → hareketi düzenle → *Bilgisayardan yükle*.
-- **Elle:** Videoyu `videos/` klasörüne kopyalayın; hareket düzenleme ekranında listeden seçin.
-  Hazır hareketler için beklenen dosya adları zaten tanımlı (ör. `bench-press.mp4`, `squat.mp4`);
-  aynı adla kopyalamanız yeterli. Listede videosu eksik olanlar turuncu işaretlenir.
+- **Elle:** Videoyu `videos/` klasörüne aynı adla kopyalayın (ör. `a1-a.mp4`).
 
-Eski donanım için öneri: **720p, H.264, 1–2 Mbps, 10–30 sn, sessiz döngü**. Büyük 1080p/4K videolar zayıf
-işlemcide takılır. Dönüştürmek için (ffmpeg ile):
+Eski donanım için öneri: **720p, H.264, 10–30 sn, sessiz döngü**. Dönüştürmek için (ffmpeg ile):
 
 ```
-ffmpeg -i girdi.mp4 -vf scale=-2:720 -c:v libx264 -preset slow -crf 26 -an -movflags +faststart cikti.mp4
+ffmpeg -i girdi.mp4 -vf scale=-2:720 -c:v libx264 -preset slow -crf 24 -an -movflags +faststart cikti.mp4
 ```
 
-## Hareket fotoğrafları
+Kardiyo hareketlerinin fotoğrafları [Free Exercise DB](https://github.com/yuhonas/free-exercise-db) projesinden
+alınmıştır (kamu malı). Dosyalar `app/img/ex/` klasöründedir.
 
-Videosu olmayan hareketlerde başlangıç ve bitiş pozisyonunu gösteren iki fotoğraf dönüşümlü gösterilir
-(34 hareket; Jumping Jack için fotoğraf yok). Video eklendiğinde fotoğrafların yerini otomatik olarak video alır.
+## Salon hareket kodları
 
-Fotoğraflar [Free Exercise DB](https://github.com/yuhonas/free-exercise-db) projesinden alınmıştır; proje
-verisini kamu malı (Unlicense) olarak yayınlıyor. Dosyalar `app/img/ex/` klasöründedir.
-
-## Salon hareket kodları (A1,1 gibi)
-
-- Her harekete salonun kodu verilebilir (*Hareketler → düzenle → Salon kodu*).
-- Toplu ekleme: *Hareketler → Kod listesi ekle*. Her satıra `A1,1 OMUZ YANA AÇIŞ` yazın ya da Excel'den
-  iki sütunu (kod, ad) kopyalayıp yapıştırın. Kodun harfinin hangi bölgeye gideceği (A → Omuz…) aynı ekranda seçilir.
-  Var olan kodların yalnızca adı güncellenir; videoları korunur.
-- Kod yazımı esnektir: `A1,1`, `A1.1`, `a1 1` aynıdır.
-- Üyeler ana ekrandaki **Kodla Ara** ile kodu yazıp hareketin videosunu açar.
-- Program düzenlerken her günün altındaki kutuya `A1,1` ya da `A1,1 3x12` yazıp Enter (veya ekran klavyesinde Tamam).
+- Kodlar eski kioskta olduğu gibidir: `A-1` ana hareket, `A-1 [A]`, `A-1 [B]` … çeşitleri.
+- Yazım esnektir: `A1`, `A-1` → ana hareket; `A1A`, `A1 a`, `A-1 [A]` → çeşit; `A1,1` → o hareketin 1. çeşidi.
+- Üyeler ana ekrandaki **Kodla Ara** ile kodu yazıp hareketin videosunu açar. Bölge sayfalarında her ana hareket
+  tek karttır; çeşitler hareket penceresinden seçilir.
+- Program düzenlerken her günün altındaki kutuya `A1A` ya da `A1A 3x12` yazıp Enter (veya ekran klavyesinde Tamam).
+- Yeni kodlar: *Hareketler → düzenle → Salon kodu* ya da toplu olarak *Hareketler → Kod listesi ekle*
+  (`A-1 [A] DÜZ TUTUŞ` satırları veya Excel'den iki sütun).
 - Üye sayfasındaki **Yazdır** ile program A4 çıktı olarak alınır.
 
 ## Güncelleme

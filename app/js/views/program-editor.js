@@ -11,7 +11,7 @@
     function render() {
       main.innerHTML =
         '<button class="crumb" data-act="cancel">' + icon('back') + esc(o.crumb) + '</button>' +
-        '<header class="page-head"><div><h1>' + esc(o.title) + '</h1><p>Hareketi kodla ekleyin (ör. <b>A1,1</b> ya da <b>A1,1 3x12</b>) veya listeden seçin.</p></div>' +
+        '<header class="page-head"><div><h1>' + esc(o.title) + '</h1><p>Hareketi kodla ekleyin (ör. <b>A1</b>, <b>A1A</b> ya da <b>A1A 3x12</b>) veya listeden seçin.</p></div>' +
           '<div class="page-head__act"><button class="btn btn--ghost" data-act="cancel">Vazgeç</button>' +
           '<button class="btn btn--primary" data-act="save">' + icon('check') + 'Kaydet</button></div></header>' +
         '<section class="card"><div class="form grid3">' +
@@ -50,7 +50,7 @@
           '</div>';
         }).join('') +
         '<div class="qadd">' +
-          '<input type="text" class="qadd__in" data-qadd="' + di + '" data-enter autocomplete="off" spellcheck="false" placeholder="Kodla ekle: A1,1 3x12">' +
+          '<input type="text" class="qadd__in" data-qadd="' + di + '" data-enter autocomplete="off" spellcheck="false" placeholder="Kodla ekle: A1A 3x12">' +
           '<span class="qadd__hint" data-qhint="' + di + '"></span>' +
           '<button class="btn btn--primary" data-act="qadd" data-d="' + di + '">' + icon('plus') + 'Ekle</button>' +
           '<button class="btn btn--ghost btn--dashed" data-act="addItem" data-d="' + di + '">' + icon('list') + 'Listeden seç</button>' +
@@ -70,10 +70,9 @@
     /* "A1,1", "A1.1 3x12", "a1 1 4×8-10" → { ex, sets, reps } */
     function parseQuick(text) {
       var t = String(text || '').trim();
-      var m = /^(\S+(?:\s+\d{1,3}(?![\dx×*]))?)(?:\s+(\d{1,2})\s*[x×*]\s*(\S+))?\s*$/i.exec(t);
-      if (!m) return null;
-      var ex = BA.store.byCode(m[1]);
-      if (!ex && / /.test(m[1])) return null;
+      // "A-1 [A] 3x12", "A1A 3x12", "A1,1" … : sondaki "SxT" ayrılır, kalanı koddur
+      var m = /^(.*?)(?:\s+(\d{1,2})\s*[x×*]\s*(\S+))?\s*$/i.exec(t);
+      var ex = m && m[1] ? BA.store.byCode(m[1]) : null;
       return ex ? { ex: ex, sets: m[2] ? +m[2] : 3, reps: m[3] || '10-12' } : null;
     }
     function quickAdd(d) {
@@ -175,7 +174,7 @@
       var el = ev.target, qa = el.getAttribute('data-qadd');
       if (qa != null) {
         var r = parseQuick(el.value), h = main.querySelector('[data-qhint="' + qa + '"]');
-        if (h) { h.textContent = r ? '→ ' + r.ex.name + ' · ' + r.sets + '×' + r.reps : (el.value.trim() ? 'Kod bulunamadı' : ''); h.classList.toggle('is-ok', !!r); }
+        if (h) { h.textContent = r ? '→ ' + (r.ex.code ? BA.codeLabel(r.ex.code) + ' ' : '') + r.ex.name + ' · ' + r.sets + '×' + r.reps : (el.value.trim() ? 'Kod bulunamadı' : ''); h.classList.toggle('is-ok', !!r); }
         return;
       }
       var f = el.getAttribute('data-f');

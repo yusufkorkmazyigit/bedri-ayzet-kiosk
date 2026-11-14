@@ -70,6 +70,7 @@
           return '<li><button class="prow" data-act="item" data-i="' + i + '">' +
             '<span class="prow__no">' + (i + 1) + '</span>' +
             '<span class="prow__name"><b>' + BA.codeChip(ex) + esc(ex.name) + '</b><span>' + esc(BA.regionById(ex.region).name) +
+              (ex.code && !BA.store.isMain(ex) && BA.store.byCode(BA.codeBase(ex.code)) ? ' · ' + esc(BA.store.byCode(BA.codeBase(ex.code)).name) : '') +
               (it.note ? ' · ' + esc(it.note) : '') + '</span></span>' +
             '<span class="prow__dose"><b>' + esc(it.sets) + ' × ' + esc(it.reps) + '</b><span>' + (it.rest ? esc(it.rest) + ' sn dinlenme' : 'set × tekrar') + '</span></span>' +
             '<span class="prow__play">' + icon('play') + '</span>' +

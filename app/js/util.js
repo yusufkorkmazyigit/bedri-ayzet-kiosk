@@ -112,19 +112,32 @@
       .replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u');
   };
 
-  /* ------------------------------------------------------------ salon hareket kodları (A1,1 gibi)
-     "a1.1", "A1 1", "A1-1", "A1,1" → "A1,1"; tanınmayan biçim büyük harf + boşluksuz döner. */
-  var CODE_RE = /^([A-ZÇĞÖŞÜ]{1,3})\s*(\d{1,3})(?:\s*[.,\-\/ ]\s*(\d{1,3}))?$/;
+  /* ------------------------------------------------------------ salon hareket kodları
+     Saklama biçimi: "A1" (ana hareket) ve "A1[A]" (varyasyon). Ekranda "A-1" / "A-1 [A]".
+     Esnek yazım: "a1", "A-1", "A 1" → "A1" ; "A1A", "A1 a", "A-1 [A]" → "A1[A]" ;
+     "A1,1", "A1.2", "A1 2" → "A1,1" (= o hareketin 1. varyasyonu; store.byCode çözer). */
+  var CODE_RE = /^([A-ZÇĞÖŞÜ]{1,2})\s*-?\s*(\d{1,3})\s*(?:\[?\s*([A-ZÇĞİÖŞÜ])\s*[\]\)\}]?|[.,\/\-]\s*(\d{1,2})|\s+(\d{1,2}))?$/;
+  BA.VORDER = 'ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ';   // varyasyon harflerinin sırası (Türk alfabesi)
+  function upTr(s) { return String(s || '').trim().replace(/i/g, 'İ').replace(/ı/g, 'I').toUpperCase(); }
   BA.codeKey = function (s) {
-    var t = String(s || '').trim().toLocaleUpperCase('tr').replace(/İ/g, 'I');
+    var t = upTr(s);
     if (!t) return '';
-    var m = CODE_RE.exec(t);
-    return m ? m[1] + m[2] + (m[3] ? ',' + m[3] : '') : t.replace(/\s+/g, '');
+    var m = CODE_RE.exec(t.replace(/^İ/, 'I'));
+    if (!m) return t.replace(/\s+/g, '');
+    return m[1] + m[2] + (m[3] ? '[' + m[3] + ']' : (m[4] || m[5]) ? ',' + (+(m[4] || m[5])) : '');
   };
-  /* Doğal sıralama: A2,1 < A10,1 ; kodsuzlar sona */
+  /* "A1[A]" → "A1" (varyasyonun ana kodu) */
+  BA.codeBase = function (c) { return String(c || '').replace(/(\[.\]|,\d+)$/, ''); };
+  /* "A1[A]" → "A-1 [A]" ; "A1" → "A-1" ; "A1,2" → "A-1,2" */
+  BA.codeLabel = function (c) {
+    var m = /^([A-ZÇĞÖŞÜ]{1,2})(\d{1,3})(.*)$/.exec(c || '');
+    if (!m) return c || '';
+    return m[1] + '-' + m[2] + (m[3] ? (m[3].charAt(0) === '[' ? ' ' : '') + m[3] : '');
+  };
+  /* Doğal sıralama: A2 < A2[A] < A2[B] < A10 ; kodsuzlar sona */
   function codeParts(c) {
-    var m = /^([A-ZÇĞÖŞÜ]*)(\d*)(?:,(\d+))?/.exec(c || '');
-    return [m[1], m[2] ? +m[2] : -1, m[3] ? +m[3] : -1];
+    var m = /^([A-ZÇĞÖŞÜ]*)(\d*)(?:\[(.)\]|,(\d+))?/.exec(c || '');
+    return [m[1], m[2] ? +m[2] : -1, m[3] ? BA.VORDER.indexOf(m[3]) + 1 : m[4] ? +m[4] : 0];
   }
   BA.codeCmp = function (a, b) {
     if (!a || !b) return a ? -1 : b ? 1 : 0;
@@ -132,7 +145,7 @@
     return x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : (x[1] - y[1]) || (x[2] - y[2]);
   };
   BA.codeChip = function (ex) {
-    return ex && ex.code ? '<span class="code">' + BA.esc(ex.code) + '</span>' : '';
+    return ex && ex.code ? '<span class="code">' + BA.esc(BA.codeLabel(ex.code)) + '</span>' : '';
   };
   /* "OMUZ YANA AÇIŞ" → "Omuz yana açış" (yalnızca tamamı büyük harfse) */
   BA.tidyName = function (s) {
@@ -169,16 +182,27 @@
 
   /* ------------------------------------------------------------ sabitler */
 
+  /* Bölgeler salonun kod harfleriyle eşleşir (A Omuz … O Plank); kardiyo kodsuz */
   BA.REGIONS = [
-    { id: 'gogus',   name: 'Göğüs',        hint: 'Pectoral kasları',       icon: 'chest' },
-    { id: 'sirt',    name: 'Sırt',         hint: 'Lat, trapez, bel',       icon: 'back' },
-    { id: 'omuz',    name: 'Omuz',         hint: 'Ön, yan ve arka deltoid', icon: 'shoulder' },
-    { id: 'kol',     name: 'Kol',          hint: 'Biceps & triceps',       icon: 'arm' },
-    { id: 'bacak',   name: 'Bacak',        hint: 'Quadriceps, hamstring',  icon: 'leg' },
-    { id: 'kalca',   name: 'Kalça',        hint: 'Gluteus kasları',        icon: 'glute' },
-    { id: 'karin',   name: 'Karın & Core', hint: 'Merkez bölge dengesi',   icon: 'core' },
-    { id: 'kardiyo', name: 'Kardiyo',      hint: 'Isınma ve dayanıklılık', icon: 'cardio' }
+    { id: 'omuz',     code: 'A', name: 'Omuz',         hint: 'Ön, yan ve arka deltoid', icon: 'shoulder' },
+    { id: 'gogus',    code: 'B', name: 'Göğüs',        hint: 'Pectoral kasları',        icon: 'chest' },
+    { id: 'kanat',    code: 'C', name: 'Kanat',        hint: 'Lat ve sırt kasları',     icon: 'back-region' },
+    { id: 'arkakol',  code: 'D', name: 'Arka Kol',     hint: 'Triceps',                 icon: 'arm' },
+    { id: 'pazu',     code: 'E', name: 'Pazu',         hint: 'Biceps',                  icon: 'arm' },
+    { id: 'bacak',    code: 'F', name: 'Bacak',        hint: 'Ön, arka bacak, baldır',  icon: 'leg' },
+    { id: 'karin',    code: 'G', name: 'Mide & Karın', hint: 'Karın kasları',           icon: 'core' },
+    { id: 'oblik',    code: 'H', name: 'Oblik',        hint: 'Yan karın',               icon: 'core' },
+    { id: 'bilek',    code: 'K', name: 'Bilek',        hint: 'Ön kol ve bilek',         icon: 'arm' },
+    { id: 'deadlift', code: 'M', name: 'Deadlift',     hint: 'Bel, kalça, arka bacak',  icon: 'glute' },
+    { id: 'plank',    code: 'O', name: 'Plank & Şınav', hint: 'Core ve vücut ağırlığı', icon: 'core' },
+    { id: 'kardiyo',  code: '',  name: 'Kardiyo',      hint: 'Isınma ve dayanıklılık',  icon: 'cardio' }
   ];
+  /* Eski sürüm bölge kimlikleri → yeni */
+  BA.REGION_ALIAS = { sirt: 'kanat', kol: 'pazu', kalca: 'bacak' };
+  BA.regionByCode = function (letter) {
+    for (var i = 0; i < BA.REGIONS.length; i++) if (BA.REGIONS[i].code && BA.REGIONS[i].code === letter) return BA.REGIONS[i];
+    return null;
+  };
   BA.regionById = function (id) {
     for (var i = 0; i < BA.REGIONS.length; i++) if (BA.REGIONS[i].id === id) return BA.REGIONS[i];
     return { id: id, name: id, icon: 'dumbbell' };
@@ -248,6 +272,6 @@
     return '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + body + '</svg>';
   };
   BA.regionIcon = function (region, cls) {
-    return BA.icon(region.id === 'sirt' ? 'back-region' : region.icon, cls);
+    return BA.icon(region.icon, cls);
   };
 })();

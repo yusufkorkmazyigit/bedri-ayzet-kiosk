@@ -36,6 +36,28 @@
       if (e.photos == null && seedPhotos[e.id]) e.photos = seedPhotos[e.id];
       e.code = e.code ? BA.codeKey(e.code) : '';
     });
+    // Eski sürüm bölge kimliklerini yenilerine taşı (sirt → kanat, kol → pazu/arka kol, kalca → bacak)
+    var known = {};
+    BA.REGIONS.forEach(function (r) { known[r.id] = 1; });
+    db.exercises.forEach(function (e) {
+      if (known[e.region]) return;
+      var to = BA.REGION_ALIAS[e.region] || 'omuz';
+      if (to === 'pazu' && /tricep|dips|kickback|skull|push.?down|overhead/i.test(e.id + ' ' + e.name)) to = 'arkakol';
+      e.region = to;
+    });
+    // Salon kütüphanesi: yeni gelen hareketler bir kez eklenir (sonradan silinenler geri gelmez)
+    if ((db.catalogVersion || 0) < (BA.CATALOG_VERSION || 0)) {
+      var have = {};
+      db.exercises.forEach(function (e) { have[e.id] = 1; });
+      BA.catalogExercises().forEach(function (e) { if (!have[e.id]) db.exercises.push(e); });
+      db.catalogVersion = BA.CATALOG_VERSION;
+    }
+    var cr = {};
+    Object.keys(db.settings.codeRegions || {}).forEach(function (l) {
+      var r = db.settings.codeRegions[l];
+      cr[l] = known[r] ? r : base.settings.codeRegions[l] || BA.REGION_ALIAS[r] || 'omuz';
+    });
+    db.settings.codeRegions = Object.assign({}, base.settings.codeRegions, cr);
     db.templates = Array.isArray(db.templates) ? db.templates : base.templates;
     db.members = Array.isArray(db.members) ? db.members : [];
     db.members.forEach(function (m) {
@@ -143,10 +165,20 @@
   };
 
   /* Video yoksa kullanılacak başlangıç/bitiş fotoğrafları (app/img/ex/<id>-0.jpg, -1.jpg) */
+  /* Salon medyası videos/ klasöründe (fotoğraflar ve önizlemeler dahil) */
+  store.mediaBase = function () { return store.mode === 'server' ? 'videos/' : '../videos/'; };
   store.photoUrls = function (ex) {
     var out = [];
-    for (var i = 0; ex && i < (ex.photos || 0); i++) out.push('img/ex/' + encodeURIComponent(ex.id) + '-' + i + '.jpg');
+    if (!ex) return out;
+    var imgs = ex.images && ex.images.length ? ex.images : ex.image ? [ex.image] : null;
+    if (imgs) return imgs.map(function (f) { return store.mediaBase() + encodeURIComponent(f); });
+    for (var i = 0; i < (ex.photos || 0); i++) out.push('img/ex/' + encodeURIComponent(ex.id) + '-' + i + '.jpg');
     return out;
+  };
+  /* Kart önizlemesi: hazır küçük resim (videos/thumbs) ya da ilk fotoğraf */
+  store.thumbUrl = function (ex) {
+    if (ex && ex.thumb) return store.mediaBase() + 'thumbs/' + encodeURIComponent(ex.thumb);
+    return store.photoUrls(ex)[0] || '';
   };
 
   /* XHR: yükleme ilerlemesini gösterebilmek için */
@@ -187,32 +219,54 @@
 
   /* ------------------------------------------------------------ hareket kodları
      Dizin yalnızca veri değiştiğinde (rev) yeniden kurulur; arama 300+ kodda bile anlık. */
-  var codeIdx = null, codeList = null, codeRev = -1;
+  var codeIdx = null, codeList = null, groupIdx = null, codeRev = -1;
   function codeIndex() {
     if (codeIdx && codeRev === store.rev) return;
-    codeIdx = {}; codeList = [];
+    codeIdx = {}; codeList = []; groupIdx = {};
     store.db.exercises.forEach(function (e) {
       if (!e.code || codeIdx[e.code]) return;
       codeIdx[e.code] = e; codeList.push(e);
     });
     codeList.sort(function (a, b) { return BA.codeCmp(a.code, b.code); });
+    codeList.forEach(function (e) {
+      var b = BA.codeBase(e.code);
+      (groupIdx[b] || (groupIdx[b] = [])).push(e);
+    });
     codeRev = store.rev;
   }
-  store.byCode = function (code) { codeIndex(); return codeIdx[BA.codeKey(code)] || null; };
+  /* Ana hareket + varyasyonları (kod sırasıyla) */
+  store.variantsOf = function (base) { codeIndex(); return groupIdx[BA.codeBase(base)] || []; };
+  store.isMain = function (ex) { return !!ex && !!ex.code && ex.code === BA.codeBase(ex.code); };
+  /* "A1[A]" tam eşleşme; "A1,2" → A-1'in 2. varyasyonu */
+  store.byCode = function (code) {
+    codeIndex();
+    var k = BA.codeKey(code);
+    if (codeIdx[k]) return codeIdx[k];
+    var m = /^(.+),(\d+)$/.exec(k);
+    if (!m) return null;
+    var vars = (groupIdx[m[1]] || []).filter(function (e) { return e.code !== m[1]; });
+    return vars[+m[2] - 1] || null;
+  };
 
-  /* "A1" → A1, A1,1, A1,2 … (tam eşleşme ve alt kodlar önce), sonra A10… */
+  /* Kodla arama: "A" → A grubunun ana hareketleri; "A1" → A-1 ve çeşitleri, sonra A10–A19;
+     "A1,2" / "A1B" → o varyasyon ve kardeşleri. */
   store.searchCode = function (q, limit) {
     codeIndex();
-    var k = BA.codeKey(q);
+    var k = BA.codeKey(q).replace(/,$/, '');
     if (!k) return [];
-    var exact = [], sub = [], rest = [];
-    for (var i = 0; i < codeList.length; i++) {
-      var c = codeList[i].code;
-      if (c === k) exact.push(codeList[i]);
-      else if (c.indexOf(k + ',') === 0) sub.push(codeList[i]);
-      else if (c.indexOf(k) === 0) rest.push(codeList[i]);
+    var out = [], seen = {};
+    function push(e) { if (e && !seen[e.id]) { seen[e.id] = 1; out.push(e); } }
+    if (/^[A-ZÇĞÖŞÜ]+$/.test(k)) {
+      codeList.forEach(function (e) { if (store.isMain(e) && e.code.replace(/\d.*$/, '') === k) push(e); });
+      return out.slice(0, limit || 60);
     }
-    return exact.concat(sub, rest).slice(0, limit || 50);
+    push(store.byCode(k));
+    var base = BA.codeBase(k);
+    (groupIdx[base] || []).forEach(push);
+    if (/\d$/.test(base)) codeList.forEach(function (e) {
+      if (store.isMain(e) && e.code.indexOf(base) === 0 && /\d/.test(e.code.charAt(base.length))) push(e);
+    });
+    return out.slice(0, limit || 60);
   };
   store.codeLetters = function () {
     codeIndex();
@@ -227,7 +281,7 @@
     String(text || '').split(/\r?\n/).forEach(function (raw) {
       var line = raw.replace(/\t+/g, ' ').trim();
       if (!line) return;
-      var m = /^([A-Za-zÇĞİÖŞÜçğıöşü]{1,3}\s*\d{1,3}(?:\s*[.,\-\/]\s*\d{1,3})?)\s*[:–\-=)]?\s+(\S.*)$/.exec(line);
+      var m = /^([A-Za-zÇĞİÖŞÜçğıöşü]{1,2}\s*-?\s*\d{1,3}(?:\s*\[\s*[A-Za-zÇĞİÖŞÜçğıöşü]\s*\]|\s*[.,\/]\s*\d{1,2}|[A-ZÇĞİÖŞÜ](?=\s))?)\s*[:–\-=)]?\s+(\S.*)$/.exec(line);
       if (!m) { bad.push(line); return; }
       var code = BA.codeKey(m[1]);
       if (seen[code]) { bad.push(line + '  (tekrar eden kod)'); return; }
@@ -246,7 +300,7 @@
         if (ex.name !== r.name) { ex.name = r.name; updated++; }
         return;
       }
-      var id = 'k-' + BA.norm(r.code).replace(/[^a-z0-9]+/g, '-');
+      var id = 'k-' + BA.norm(r.code).replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
       while (store.exercise(id)) id += '-' + BA.uid().slice(-3);
       store.db.exercises.push({
         id: id, code: r.code, name: r.name, region: letterRegion[r.letter] || 'omuz',
