@@ -88,7 +88,7 @@
       if (badge) badge.textContent = fmtLeft(Math.max(0, left));
       if (left <= 0) { app.logout(); BA.toast('Oturum hareketsizlik nedeniyle kapatıldı.'); }
       else if (left <= WARN_BEFORE) showWarn(left);
-    } else if (idle > HOME_IDLE && (app.params.region || BA.modal.top())) {
+    } else if (idle > HOME_IDLE && (app.params.region || BA.modal.top() || app.view !== 'home')) {
       app.go('home');
       last = Date.now();
     }

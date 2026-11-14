@@ -3,6 +3,17 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.8.1] - 2026-11-15
+
+### Eklendi
+- **Fitness Ansiklopedisi:** ana menüdeki "Ansiklopedi" butonuyla açılan okuma bölümü. 7 bölümde 19 yazı (temeller, teknik ve güvenlik, beslenme, toparlanma, kardiyo, doğru bilinen yanlışlar, sözlük). Solda içindekiler, sağda kaydırarak okuma; okunan bölüm menüde işaretlenir. İçerik yalnızca ilk açılışta yüklenir, açılışı yavaşlatmaz.
+
+### Değişti
+- Ana menü başlığı: "Bugün hangi bölgeyi çalışıyoruz?" yerine Atatürk'ün sözü: “Ben sporcunun zeki, çevik ve aynı zamanda ahlaklısını severim.”
+
+### Düzeltildi
+- Kioskun Chrome 79 sürümünde listeler dağınık görünüyordu (eğitmen panelinde hareket ve üye satırları, üye programı). Eski Chrome düğmelerde ızgara düzenini ve esnek kutu boşluklarını (gap) desteklemiyor; bu sürümler için otomatik yedek düzen eklendi. Yeni tarayıcılarda görünüm değişmedi.
+
 ## [1.8.0] - 2026-11-15
 
 ### Değişti

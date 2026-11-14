@@ -35,6 +35,7 @@
         backHome: function () { BA.app.go('home'); },
         ex: function (el) { BA.showExercise(el.getAttribute('data-id')); },
         codeSearch: function () { BA.codePad(); },
+        library: function () { BA.app.go('library'); },
         memberLogin: memberLogin,
         trainerLogin: trainerLogin
       }
@@ -44,7 +45,9 @@
   /* Ana menü: 12 bölge kartı — görsel + kod harfi + bölge adı; az yazı, büyük dokunma alanı */
   function gridView() {
     var counts = mainCounts();
-    return '<section class="hero"><h1>Bugün hangi bölgeyi <em>çalışıyoruz?</em></h1></section>' +
+    return '<section class="hero hero--quote"><blockquote><p>“Ben sporcunun <em>zeki, çevik</em> ve aynı zamanda <em>ahlaklısını</em> severim.”</p>' +
+        '<cite>Mustafa Kemal Atatürk</cite></blockquote>' +
+        '<button class="btn btn--ghost hero__lib" data-act="library">' + BA.icon('book') + '<span>Ansiklopedi</span></button></section>' +
       '<section class="regions">' + BA.REGIONS.map(function (r) {
         return '<button class="rcard" data-act="region" data-id="' + r.id + '" aria-label="' + esc(r.name) + '">' +
           '<img class="rcard__img" src="img/regions/' + r.id + '.webp" alt="" draggable="false" decoding="async">' +

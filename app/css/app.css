@@ -991,3 +991,93 @@ html.lite .rcard__img { transition: none; }
 .rcard__img { z-index: 0; }
 .rcard::before { z-index: 1; }
 .rcard__code, .rcard__txt { z-index: 2; }
+
+/* ------------------------------------------------------------------ ESKİ CHROME (< 84) YEDEK DÜZENİ
+   html.oldchrome util.js'te eklenir. Düğmeler grid kapsayıcısı olamadığı için flex'e çevrilir,
+   flex "gap" yerine kenar boşlukları kullanılır. Yeni tarayıcılar bu kuralları hiç görmez. */
+html.oldchrome .btn > * + *, html.oldchrome .chip > * + *, html.oldchrome .side__item > * + * { margin-left: .55rem; }
+html.oldchrome .topbar__right > * + *, html.oldchrome .page-head__act > * + *, html.oldchrome .card__foot > * + *,
+html.oldchrome .chips > * + *, html.oldchrome .chipbar > * + *, html.oldchrome .tabs > * + *, html.oldchrome .seg > * + *,
+html.oldchrome .qadd > * + *, html.oldchrome .psum > * + * { margin-left: .6rem; }
+html.oldchrome .chipbar, html.oldchrome .chips { row-gap: .5rem; }
+html.oldchrome .home > * + * { margin-top: 1.5rem; }
+html.oldchrome .admin__main > * + *, html.oldchrome .panel > * + * { margin-top: 1rem; }
+html.oldchrome .mlist > * + *, html.oldchrome .plist > * + *, html.oldchrome .exlist > * + *, html.oldchrome .vars__list > * + *,
+html.oldchrome .cres > * + *, html.oldchrome .side > * + *, html.oldchrome .pad > * + *, html.oldchrome .pad__col > * + * { margin-top: .5rem; }
+
+/* Düğme satırları: grid → flex */
+html.oldchrome .mrow, html.oldchrome .exrow__main, html.oldchrome .prow, html.oldchrome .pick { display: flex; align-items: center; }
+html.oldchrome .mrow > * + *, html.oldchrome .exrow__main > * + *, html.oldchrome .prow > * + * { margin-left: 1rem; }
+html.oldchrome .mrow .avatar, html.oldchrome .mrow__go, html.oldchrome .exrow__main .vstat, html.oldchrome .prow__no, html.oldchrome .prow__play { flex: none; }
+html.oldchrome .mrow__name { flex: 1.5 1 0; }
+html.oldchrome .mrow__col { flex: 1.2 1 0; }
+html.oldchrome .exrow__name, html.oldchrome .prow__name { flex: 1 1 auto; }
+html.oldchrome .exrow__file, html.oldchrome .prow__dose { flex: none; }
+html.oldchrome .pick { flex-wrap: wrap; position: relative; padding-right: 2.6rem; }
+html.oldchrome .pick b, html.oldchrome .pick span { width: 100%; }
+html.oldchrome .pick .ico { position: absolute; right: 1rem; top: 50%; margin-top: -.6em; }
+html.oldchrome .bm__lbl { display: flex; flex-direction: column; }
+html.oldchrome .bm__lbl--l { align-items: flex-end; }
+html.oldchrome .tile > * + *, html.oldchrome .rcard__txt > * + * { margin-top: .1rem; }
+html.oldchrome .daymeta > * + *, html.oldchrome .session > * + *, html.oldchrome .greet span > * + * { margin-left: .8rem; }
+html.oldchrome .note > .ico, html.oldchrome .bday-banner > .ico, html.oldchrome .greet b > .ico, html.oldchrome .warnlist .ico { margin-right: .5rem; }
+html.oldchrome .tiles--col > * + * { margin-top: .45rem; }
+html.oldchrome .tiles--col { display: flex; flex-direction: column; }
+
+/* Ana menü sözü */
+.hero--quote blockquote { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; }
+.hero--quote p {
+  font-family: "Barlow Condensed", "Barlow", sans-serif; font-weight: 600;
+  font-size: 2.05rem; line-height: 1.1; color: var(--tx); margin-right: 1rem;
+}
+.hero--quote em { font-style: normal; color: var(--acc); font-weight: 700; }
+.hero--quote cite { font-style: normal; font-size: 1rem; font-weight: 500; color: var(--tx2); letter-spacing: .04em; white-space: nowrap; }
+.hero--quote cite::before { content: "— "; color: var(--mut); }
+@media (max-height: 800px) and (orientation: landscape) { .hero--quote p { font-size: 1.8rem; } }
+
+/* ------------------------------------------------------------------ FITNESS ANSİKLOPEDİSİ
+   Okuma odaklı: geniş satır aralığı, ~70 karakterlik satır, yumuşak kontrast; sol menüden bölümlere geçiş. */
+.ans { flex: 1; min-height: 0; display: flex; }
+.ans__toc {
+  flex: none; width: 20rem; overflow-y: auto; overscroll-behavior: contain;
+  padding: 1.5rem 1rem 3rem 1.5rem; border-right: 1px solid var(--line); background: var(--s1);
+}
+.ans__ch { margin-bottom: 1.25rem; }
+.ans__ch .eyebrow { margin: 0 0 .4rem .6rem; }
+.ans__link {
+  display: block; width: 100%; padding: .6rem .8rem; margin-bottom: .15rem; border-radius: .7rem;
+  font-size: 1.02rem; font-weight: 500; line-height: 1.3; color: var(--tx2); text-align: left;
+  border-left: 3px solid transparent;
+}
+.ans__link:hover { background: var(--s2); color: var(--tx); }
+.ans__link.is-on { background: var(--acc-dim); color: var(--tx); border-left-color: var(--acc); font-weight: 600; }
+.ans__body { position: relative; flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2.25rem 2.5rem 6rem; }
+.ans__inner { max-width: 46rem; margin: 0 auto; }
+.ans__art { padding-bottom: 2.75rem; margin-bottom: 2.75rem; border-bottom: 1px solid var(--line); }
+.ans__art h2 { font-family: "Barlow Condensed", "Barlow", sans-serif; font-weight: 700; font-size: 2.4rem; line-height: 1.05; margin: .35rem 0 .8rem; color: var(--tx); }
+.ans__art h3 { font-family: "Barlow Condensed", "Barlow", sans-serif; font-weight: 600; font-size: 1.5rem; margin: 1.6rem 0 .5rem; color: var(--tx); }
+.ans__art p, .ans__ul li, .ans__dl dd { font-size: 1.18rem; line-height: 1.7; color: var(--tx2); }
+.ans__art p { margin: 0 0 1rem; }
+.ans__art b { color: var(--tx); font-weight: 600; }
+.ans__lead { font-size: 1.35rem !important; line-height: 1.5 !important; color: var(--tx) !important; margin-bottom: 1.4rem !important; }
+.ans__ul { margin: 0 0 1.1rem; padding: 0; }
+.ans__ul li { position: relative; padding-left: 1.5rem; margin-bottom: .45rem; }
+.ans__ul li::before { content: ""; position: absolute; left: .2rem; top: .7em; width: .5rem; height: .5rem; border-radius: 50%; background: var(--acc); }
+.ans__tip {
+  display: flex; align-items: flex-start; padding: 1rem 1.2rem; margin: 1.2rem 0 0 !important;
+  border-radius: var(--r); background: var(--acc-dim); border: 1px solid rgba(46, 196, 177, .3); color: var(--tx) !important;
+}
+.ans__tip .ico { flex: none; color: var(--acc); margin: .3rem .75rem 0 0; }
+.ans__dl { margin: 0; }
+.ans__dl dt { font-family: "Barlow Condensed", "Barlow", sans-serif; font-weight: 700; font-size: 1.3rem; color: var(--acc); margin-top: 1rem; }
+.ans__dl dd { margin: .15rem 0 0; }
+.ans__note { font-size: .95rem !important; color: var(--mut) !important; font-style: italic; }
+.greet b .ico { margin-right: .4rem; vertical-align: -.15em; }
+@media (max-width: 1100px), (orientation: portrait) {
+  .ans__toc { width: 15rem; }
+  .ans__body { padding: 1.5rem 1.5rem 5rem; }
+}
+.hero--quote { display: flex; align-items: center; justify-content: space-between; }
+.hero--quote blockquote { flex: 1; min-width: 0; }
+.hero__lib { flex: none; margin-left: 1rem; height: 2.9rem; }
+.hero__lib .ico { color: var(--acc); }

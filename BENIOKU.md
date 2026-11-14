@@ -68,6 +68,11 @@ alınmıştır (kamu malı). Dosyalar `app/img/ex/` klasöründedir.
   (`A-1 [A] DÜZ TUTUŞ` satırları veya Excel'den iki sütun).
 - Üye sayfasındaki **Yazdır** ile program A4 çıktı olarak alınır.
 
+## Fitness Ansiklopedisi
+
+Ana menüdeki **Ansiklopedi** butonu kısa okuma yazıları açar. Metinler `app/js/ansiklopedi.js` dosyasındadır;
+yeni yazı eklemek ya da düzeltmek için bu dosyadaki blokları düzenlemek yeterlidir (biçim dosyanın başında anlatılır).
+
 ## Kiosku kapatmak
 
 Kiosk modunda kapatma tuşu yoktur. Klavye varsa **Alt+F4**, ardından `KAPAT.bat`.

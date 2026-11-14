@@ -3,6 +3,13 @@
   'use strict';
   var BA = (window.BA = window.BA || {});
 
+  /* Eski Chrome (Windows 7 kioskları, ör. 79): <button> üzerinde grid (83+) ve flex gap (84+) yok.
+     Sınıf eklenir, CSS bu durumlar için yedek düzen kullanır. */
+  (function () {
+    var m = /Chrome\/(\d+)/.exec(navigator.userAgent);
+    if (m && +m[1] < 84) document.documentElement.className += ' oldchrome';
+  })();
+
   /* ------------------------------------------------------------ metin / veri */
   var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   BA.esc = function (v) {
@@ -238,6 +245,7 @@
     down: '<path d="M6 9l6 6 6-6"/>',
     logout: '<path d="M15 4h4v16h-4M10 17l5-5-5-5M15 12H3"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    book: '<path d="M3 5.5C6 4 9.5 4 12 6v14c-2.5-2-6-2-9-.5z"/><path d="M21 5.5C18 4 14.5 4 12 6v14c2.5-2 6-2 9-.5z"/>',
     print: '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
     alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/>',
     users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.8 2.9-6 6.5-6s6.5 2.2 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2.2.6 3.5 2.6 3.5 6"/>',
