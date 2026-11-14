@@ -41,22 +41,27 @@
     };
   };
 
+  /* Ana menü: 12 bölge kartı — görsel + kod harfi + bölge adı; az yazı, büyük dokunma alanı */
   function gridView() {
-    var counts = BA.store.countByRegion();
-    return '<section class="hero">' +
-        '<p class="eyebrow">Hareket rehberi</p>' +
-        '<h1>Bugün hangi bölgeyi <em>çalışıyoruz?</em></h1>' +
-        '<p class="hero__sub">Bir bölge seç, hareketlerin doğru formunu videolu anlatımla izle.</p>' +
-      '</section>' +
-      '<section class="regions">' + BA.REGIONS.map(function (r, i) {
-        var n = counts[r.id] || 0;
-        return '<button class="rcard" data-act="region" data-id="' + r.id + '">' +
-          '<span class="rcard__no' + (r.code ? ' rcard__no--code' : '') + '">' + (r.code ? esc(r.code) : (i < 9 ? '0' : '') + (i + 1)) + '</span>' +
-          '<span class="rcard__ico">' + BA.regionIcon(r) + '</span>' +
-          '<span class="rcard__body"><b>' + esc(r.name) + '</b><span>' + esc(r.hint) + '</span></span>' +
-          '<span class="rcard__foot"><span>' + n + ' hareket</span>' + icon('arrow') + '</span>' +
+    var counts = mainCounts();
+    return '<section class="hero"><h1>Bugün hangi bölgeyi <em>çalışıyoruz?</em></h1></section>' +
+      '<section class="regions">' + BA.REGIONS.map(function (r) {
+        return '<button class="rcard" data-act="region" data-id="' + r.id + '" aria-label="' + esc(r.name) + '">' +
+          '<img class="rcard__img" src="img/regions/' + r.id + '.webp" alt="" draggable="false" decoding="async">' +
+          '<span class="rcard__code">' + (r.code ? esc(r.code) : BA.icon('cardio')) + '</span>' +
+          '<span class="rcard__txt"><b>' + esc(r.name) + '</b><span>' + (counts[r.id] || 0) + ' hareket</span></span>' +
         '</button>';
       }).join('') + '</section>';
+  }
+  /* Bölge başına ana hareket sayısı (çeşitler ayrıca sayılmaz) */
+  function mainCounts() {
+    var seen = {}, c = {};
+    BA.store.db.exercises.forEach(function (e) {
+      var k = e.region + '|' + (e.code ? BA.codeBase(e.code) : '#' + e.id);
+      if (seen[k]) return;
+      seen[k] = 1; c[e.region] = (c[e.region] || 0) + 1;
+    });
+    return c;
   }
 
   /* Bölge sayfası: her ana hareket tek kart (çeşitleri hareket penceresinde seçilir).
@@ -71,8 +76,9 @@
     });
     return '<section class="region-head">' +
         '<button class="btn btn--ghost btn--icon" data-act="backHome" aria-label="Geri">' + icon('back') + '</button>' +
-        '<div class="region-head__ico">' + BA.regionIcon(region) + '</div>' +
-        '<div><p class="eyebrow">' + (region.code ? 'Kod ' + esc(region.code) + ' · ' : '') + groups.length + ' hareket' +
+        '<div class="region-head__ico"><img src="img/regions/' + region.id + '.webp" alt="" draggable="false"></div>' +
+        (region.code ? '<span class="region-head__code-l">' + esc(region.code) + '</span>' : '') +
+        '<div><p class="eyebrow">' + groups.length + ' hareket' +
           (list.length > groups.length ? ', ' + list.length + ' çeşit' : '') + '</p><h1>' + esc(region.name) + '</h1></div>' +
         '<button class="btn btn--ghost region-head__code" data-act="codeSearch">' + icon('search') + '<span>Kodla Ara</span></button>' +
       '</section>' +

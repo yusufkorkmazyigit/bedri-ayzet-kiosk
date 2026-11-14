@@ -3,6 +3,23 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.8.0] - 2026-11-15
+
+### Değişti
+- Yeni görünüm: ana menüde 12 bölge kartı salona özel anatomi görselleriyle; her kartta büyük kod harfi (A, B, C …), bölge adı ve hareket sayısı. Gereksiz açıklama yazıları kaldırıldı.
+- Okunaklı yazı tipleri: başlıklarda Barlow Condensed, metinlerde Barlow (yerel dosya, internet gerekmez; SIL OFL lisanslı, `app/fonts`).
+- Renk paleti: koyu lacivert zemin + görsellerle uyumlu turkuaz vurgu; metin kontrastları WCAG AA düzeyinde. Vücut haritasındaki vurgu da turkuaza çevrildi.
+- Bölge sayfası başlığında kategori görseli ve kod harfi; hareket kartlarında daha büyük adlar.
+- Kart sayıları artık ana hareketleri sayıyor (çeşitler ayrıca sayılmıyor).
+
+## [1.7.1] - 2026-11-15
+
+### Düzeltildi
+- Eski Chrome sürümlerinde (Windows 7 kiosku) pencereler görünmüyordu: hareket videosu, Üye Girişi ve Eğitmen Girişi açılmıyormuş gibi davranıyordu. `inset` ve `aspect-ratio` gibi yeni CSS özellikleri klasik karşılıklarıyla değiştirildi, eski sürümler için yedek eklendi.
+
+### Eklendi
+- Ayarlar → **Kiosku kapat**: klavye olmadan "Masaüstüne çık" ya da "Bilgisayarı kapat" (eğitmen PIN'iyle girilen panelden).
+
 ## [1.7.0] - 2026-11-14
 
 ### Eklendi

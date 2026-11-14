@@ -1,25 +1,27 @@
 /* ==========================================================================
    Bedri Ayzet Kiosk — stil dosyası
    Performans kuralları (eski kiosk donanımı için):
-   - web fontu yok (Segoe UI / sistem fontu), blur/backdrop-filter yok
+   - yerel web fontu: Barlow (metin) + Barlow Condensed (başlık), woff2, internet gerekmez; blur yok
    - animasyonlar yalnızca transform + opacity; html.lite hepsini kapatır
    - gölgeler tek katman ve küçük; büyük gradyanlar yok
    - Chrome/Edge 109 (Windows 7'nin son sürümü) uyumlu: CSS nesting kullanılmaz
    ========================================================================== */
 
 :root {
-  --bg: #0a0e15;
-  --s1: #111722;
-  --s2: #171e2b;
-  --s3: #202838;
-  --line: #222b3a;
-  --line2: #313c50;
-  --tx: #f3f4f6;
-  --tx2: #b7bcc6;
-  --mut: #7f8693;
-  --acc: #12a8f0;   /* Bedri Ayzet elektrik mavisi */
-  --acc-dim: rgba(18, 168, 240, .13);
-  --acc-ink: #06111f;
+  /* v1.8 palet: koyu lacivert zemin + kategori görsellerindeki turkuaz vurgu.
+     Metin kontrastları WCAG AA (4.5:1) üzerinde: --tx2 ≈ 9:1, --mut ≈ 5.5:1 (--s1 üzerinde) */
+  --bg: #0a1018;
+  --s1: #111a26;
+  --s2: #172233;
+  --s3: #1f2c3f;
+  --line: #1d2a3b;
+  --line2: #2c3b50;
+  --tx: #f2f6fa;
+  --tx2: #bcc7d4;
+  --mut: #8796a8;
+  --acc: #2ec4b1;   /* turkuaz: kategori görselleriyle aynı aile */
+  --acc-dim: rgba(46, 196, 177, .14);
+  --acc-ink: #03201c;
   --navy: #0a2540;
   --good: #5ee08f;
   --bad: #f6ad3c;
@@ -32,6 +34,19 @@
   color-scheme: dark;
 }
 
+/* Yazı tipleri (SIL OFL, app/fonts). Türkçe karakterler latin-ext dosyasında. */
+@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url(../fonts/barlow-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url(../fonts/barlow-latin-ext-400-normal.woff2) format("woff2"); unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url(../fonts/barlow-latin-500-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url(../fonts/barlow-latin-ext-500-normal.woff2) format("woff2"); unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Barlow"; font-weight: 600 900; font-display: swap; src: url(../fonts/barlow-latin-600-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Barlow"; font-weight: 600 900; font-display: swap; src: url(../fonts/barlow-latin-ext-600-normal.woff2) format("woff2"); unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url(../fonts/barlow-condensed-latin-600-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url(../fonts/barlow-condensed-latin-ext-600-normal.woff2) format("woff2"); unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700 900; font-display: swap; src: url(../fonts/barlow-condensed-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700 900; font-display: swap; src: url(../fonts/barlow-condensed-latin-ext-700-normal.woff2) format("woff2"); unicode-range: U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF; }
+
+/* Not: eski Chrome sürümleri (Windows 7 kioskları) için inset/aspect-ratio yerine klasik özellikler + yedekler */
 /* Kök font boyutu ekran genişliğiyle ölçeklenir: 1024 → ~14px, 1366 → ~16px, 1920 → 20px */
 html { font-size: clamp(14px, calc(.9vw + 4px), 20px); }
 @media (orientation: portrait) { html { font-size: clamp(15px, 1.65vw, 22px); } }
@@ -41,9 +56,9 @@ html, body { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--tx);
-  font-family: "Segoe UI", "Segoe UI Variable Text", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 1rem;
-  line-height: 1.45;
+  font-family: "Barlow", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   user-select: none;
@@ -113,7 +128,7 @@ code { font-family: Consolas, monospace; font-size: .9em; color: var(--acc); }
 }
 .btn:active { transform: scale(.97); }
 .btn--primary { background: var(--acc); color: var(--acc-ink); }
-.btn--primary:hover { background: #3dbbf5; }
+.btn--primary:hover { background: #4fd6c5; }
 .btn--ghost { background: var(--s2); border: 1px solid var(--line2); color: var(--tx); }
 .btn--ghost:hover { border-color: var(--mut); }
 .btn--danger { background: var(--danger); color: #fff; }
@@ -249,9 +264,9 @@ code { font-family: Consolas, monospace; font-size: .9em; color: var(--acc); }
 
 /* ------------------------------------------------------------------ MODAL */
 #layer { position: relative; z-index: 50; }
-.modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; opacity: 0; transition: opacity .18s; }
+.modal { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; opacity: 0; transition: opacity .18s; }
 .modal.is-open { opacity: 1; }
-.modal__scrim { position: absolute; inset: 0; background: rgba(4, 5, 7, .78); }
+.modal__scrim { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(4, 5, 7, .78); }
 .modal__card {
   position: relative;
   width: 100%; max-width: 42rem; max-height: 100%;
@@ -305,22 +320,22 @@ body.osk-open .modal { bottom: var(--osk-h); }
 .ex__media { position: relative; aspect-ratio: 16 / 9; border-radius: 1.1rem; overflow: hidden; background: #000; }
 .ex__media video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
 .novideo {
-  position: absolute; inset: 0;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem;
   padding: 2rem; text-align: center; color: var(--mut);
   background: var(--s2);
 }
 .novideo .ico { width: 3rem; height: 3rem; color: var(--line2); }
 .novideo b { color: var(--tx); font-size: 1.15rem; }
-.photos { position: absolute; inset: 0; background: #000; }
-.photos img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .35s; }
+.photos { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: #000; }
+.photos img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .35s; }
 .photos img.is-on { opacity: 1; }
 .photos__cap { position: absolute; left: .8rem; bottom: .8rem; display: flex; flex-direction: column; line-height: 1.2; padding: .45rem .8rem; border-radius: 10px; background: rgba(10, 14, 21, .82); }
 .photos__cap b { color: var(--acc); font-size: .95rem; }
 .photos__cap span { font-size: .75rem; color: var(--tx2); }
 .ex__info { display: flex; flex-direction: column; gap: 1rem; }
 .plan-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
-.plan-strip div { padding: .75rem 1rem; background: var(--acc-dim); border: 1px solid rgba(18, 168, 240, .3); border-radius: var(--r); }
+.plan-strip div { padding: .75rem 1rem; background: var(--acc-dim); border: 1px solid rgba(46, 196, 177, .3); border-radius: var(--r); }
 .plan-strip span { display: block; font-size: .75rem; color: var(--tx2); text-transform: uppercase; letter-spacing: .1em; }
 .plan-strip b { font-size: 1.35rem; font-weight: 800; }
 .steps { counter-reset: s; display: flex; flex-direction: column; gap: .7rem; }
@@ -420,7 +435,7 @@ body.osk-open .modal { bottom: var(--osk-h); }
 .chart-empty { padding: 2rem; text-align: center; color: var(--mut); }
 
 /* ------------------------------------------------------------------ OTURUM UYARISI */
-.idle { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(4, 5, 7, .85); }
+.idle { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 80; display: grid; place-items: center; background: rgba(4, 5, 7, .85); }
 .idle__card { text-align: center; display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 2rem; }
 .idle__ring { width: 7rem; height: 7rem; border-radius: 50%; border: 4px solid var(--acc); display: grid; place-items: center; margin-bottom: .5rem; }
 .idle__ring b { font-size: 2.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -561,7 +576,7 @@ body.osk-open .admin__main { padding-bottom: calc(var(--osk-h) + 2rem); }
 .exrow__name span { font-size: .85rem; color: var(--mut); }
 .exrow__file { display: flex; flex-direction: column; align-items: flex-end; font-family: Consolas, monospace; font-size: .82rem; color: var(--tx2); }
 .exrow__file em { font-style: normal; color: var(--mut); font-family: inherit; }
-.exrow__file small { color: var(--bad); font-family: "Segoe UI", system-ui, sans-serif; }
+.exrow__file small { color: var(--bad); font-family: "Barlow", system-ui, sans-serif; }
 .vstat { width: 2.6rem; height: 2.6rem; border-radius: 50%; display: grid; place-items: center; }
 .vstat--on { background: var(--acc); color: var(--acc-ink); }
 .vstat--off { background: var(--s3); color: var(--bad); }
@@ -617,7 +632,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity
 .vpick { display: flex; gap: .6rem; }
 .vpick select { flex: 1; }
 .progress { position: relative; height: 2rem; margin-top: .5rem; border-radius: 8px; background: var(--s3); overflow: hidden; }
-.progress i { position: absolute; inset: 0; background: var(--acc); transform-origin: left; transform: scaleX(0); transition: transform .2s; }
+.progress i { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: var(--acc); transform-origin: left; transform: scaleX(0); transition: transform .2s; }
 .progress span { position: relative; display: block; line-height: 2rem; padding: 0 .8rem; font-size: .85rem; font-weight: 700; color: var(--tx); mix-blend-mode: difference; }
 
 /* ------------------------------------------------------------------ EKRAN KLAVYESİ */
@@ -719,7 +734,7 @@ html.lite .modal__card, html.lite .toast { box-shadow: none; }
 
 .bm { position: relative; flex: none; width: 100%; max-width: 36rem; margin: 0 auto; aspect-ratio: 500 / 420; }
 .bm__img, .bm__hl { position: absolute; display: block; pointer-events: none; user-select: none; }
-.bm__svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.bm__svg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; display: block; }
 .bm__hit { fill: transparent; cursor: pointer; }
 .bm__lead { fill: none; stroke: var(--line2); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .bm__lead.is-on { stroke: var(--acc); }
@@ -892,3 +907,87 @@ html.lite .modal__card, html.lite .toast { box-shadow: none; }
   .rcard__ico { width: 3rem; height: 3rem; top: 1rem; right: 1rem; }
   .rcard__body b { font-size: 1.5rem; }
 }
+
+/* ------------------------------------------------------------------ ESKİ CHROME YEDEKLERİ
+   aspect-ratio (Chrome 88+) yoksa: medya kutusu sabit yükseklik, vücut haritası padding oranı */
+@supports not (aspect-ratio: 1 / 1) {
+  .ex__media { height: 0; padding-top: 56.25%; }
+  .ex__media video { position: absolute; top: 0; left: 0; }
+  .bm { height: 0; padding-top: 84%; }
+}
+
+/* ------------------------------------------------------------------ v1.8 TASARIM: okunaklı tipografi + görselli bölge kartları
+   Başlıklar Barlow Condensed (dar, kalın, uzaktan okunur); metin Barlow. Az yazı, büyük dokunma alanı. */
+.hero h1, .region-head h1, .panel__head h2, .page-head h1, .modal__head h2, .greet b,
+.rcard__txt b, .rcard__code, .region-head__code-l, .tile__val, .bm__lbl b, .prow__dose b, .pad__display {
+  font-family: "Barlow Condensed", "Barlow", "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+.hero { padding-bottom: .2rem; }
+.hero h1 { font-size: 2.5rem; font-weight: 700; line-height: 1.05; margin: 0; }
+.page-head h1, .panel__head h2 { font-weight: 700; font-size: 2.1rem; }
+.modal__head h2 { font-weight: 700; font-size: 1.75rem; line-height: 1.1; }
+.eyebrow { letter-spacing: .12em; }
+
+/* Bölge kartı */
+.regions { grid-auto-rows: minmax(9rem, 1fr); gap: 1rem; }
+.rcard {
+  padding: 0; display: block; min-height: 0;
+  background: linear-gradient(160deg, #182436 0%, #101823 70%);
+  border: 1px solid var(--line); border-radius: 1.25rem;
+}
+.rcard::after { display: none; }
+.rcard__img {
+  position: absolute; right: -2%; bottom: -4%; height: 112%; max-width: 68%;
+  object-fit: contain; object-position: right bottom; pointer-events: none;
+  transition: transform .25s var(--ease);
+}
+.rcard__code {
+  position: absolute; top: .9rem; left: 1rem; z-index: 1;
+  min-width: 3rem; height: 3rem; padding: 0 .6rem; border-radius: .9rem;
+  display: grid; place-items: center;
+  background: var(--acc); color: var(--acc-ink);
+  font-size: 2rem; font-weight: 700; line-height: 1;
+}
+.rcard__code .ico { width: 1.6rem; height: 1.6rem; }
+.rcard__txt {
+  position: absolute; left: 1rem; bottom: .85rem; right: 40%; z-index: 1;
+  display: flex; flex-direction: column;
+}
+.rcard__txt b { font-size: 2.15rem; font-weight: 700; line-height: 1; color: var(--tx); text-shadow: 0 2px 10px rgba(5, 9, 15, .9); }
+.rcard__txt span { margin-top: .3rem; font-size: .95rem; font-weight: 500; color: var(--tx2); }
+.rcard:hover, .rcard:active { border-color: var(--acc); background: linear-gradient(160deg, #1d2b40 0%, #121c29 70%); }
+.rcard:hover .rcard__img, .rcard:active .rcard__img { transform: scale(1.04); }
+.rcard:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+
+/* Bölge sayfası başlığı: kategori görseli + harf */
+.region-head__ico { width: 4.5rem; height: 4.5rem; background: var(--s2); padding: .3rem; overflow: hidden; }
+.region-head__ico img { width: 100%; height: 100%; object-fit: contain; }
+.region-head__code-l {
+  min-width: 3rem; height: 3rem; border-radius: .9rem; display: grid; place-items: center;
+  background: var(--acc); color: var(--acc-ink); font-size: 2rem; font-weight: 700;
+}
+.region-head h1 { font-weight: 700; font-size: 2.6rem; }
+
+/* Hareket kartlarında daha büyük, okunaklı ad */
+.excard__body b { font-size: 1.2rem; font-weight: 600; line-height: 1.25; }
+.code.code { font-family: "Barlow Condensed", "Barlow", sans-serif; font-size: .95em; font-weight: 700; letter-spacing: .02em; }
+
+@media (max-height: 800px) and (orientation: landscape) {
+  .hero h1 { font-size: 2.1rem; }
+  .regions { grid-auto-rows: minmax(7.8rem, 1fr); gap: .85rem; }
+  .rcard__txt b { font-size: 1.9rem; }
+  .rcard__code { min-width: 2.6rem; height: 2.6rem; font-size: 1.7rem; }
+}
+@media (max-width: 1100px), (orientation: portrait) {
+  .regions { grid-template-columns: repeat(3, 1fr); }
+}
+html.lite .rcard__img { transition: none; }
+/* Yazının arkası her görselde okunaklı kalsın: soldan koyulaşan hafif perde */
+.rcard::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 70%; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(14, 21, 32, .92) 0%, rgba(14, 21, 32, .6) 45%, rgba(14, 21, 32, 0) 100%);
+}
+.rcard__img { z-index: 0; }
+.rcard::before { z-index: 1; }
+.rcard__code, .rcard__txt { z-index: 2; }

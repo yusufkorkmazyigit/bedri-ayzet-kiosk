@@ -68,6 +68,11 @@ alınmıştır (kamu malı). Dosyalar `app/img/ex/` klasöründedir.
   (`A-1 [A] DÜZ TUTUŞ` satırları veya Excel'den iki sütun).
 - Üye sayfasındaki **Yazdır** ile program A4 çıktı olarak alınır.
 
+## Kiosku kapatmak
+
+Kiosk modunda kapatma tuşu yoktur. Klavye varsa **Alt+F4**, ardından `KAPAT.bat`.
+Klavye yoksa: Eğitmen Girişi → Ayarlar → **Kiosku kapat** → *Masaüstüne çık* ya da *Bilgisayarı kapat*.
+
 ## Güncelleme
 
 Yeni sürümün zip'ini USB belleğe çıkarın ve **oradaki** `GUNCELLE.bat` dosyasını kioskta çalıştırın.
@@ -82,7 +87,7 @@ Eski klasörü silmeyin: betik yalnızca program dosyalarını yeniler, `data/` 
 
 ## Performans
 
-- Framework yok, web fontu yok, internet isteği yok — sayfanın tamamı ~150 KB.
+- Framework yok, internet isteği yok. Yazı tipleri (Barlow, ~170 KB) ve bölge görselleri (~530 KB) uygulamanın içinde gelir.
 - Video penceresi kapanınca kod çözücü hemen serbest bırakılır.
 - Çok yavaş cihazlarda: *Ayarlar → Performans modu → Hafif* (tüm animasyonları kapatır).
 - Ekran titriyor / siyah kalıyorsa `BASLAT.bat` içindeki tarayıcı satırına `--disable-gpu` ekleyin.

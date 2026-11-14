@@ -7,6 +7,8 @@
  *  - data/db.json dosyasını /api/db üzerinden okur/yazar (atomik yazım + günlük yedek;
  *    eşzamanlı istekler kilitle sıraya girer, her yazım kendi geçici dosyasını kullanır)
  *  - /api/videos  : video listesi (GET) ve yükleme (POST ?name=)
+ *  - /api/kapat   : POST ?ne=uygulama → tarayıcıyı ve sunucuyu kapatır; ?ne=bilgisayar → Windows'u kapatır
+ *                   (yalnızca bu bilgisayardan; arayüzde eğitmen PIN'iyle korunur)
  *
  * Yalnızca 127.0.0.1'e bağlanır; dışarıdan erişilemez.
  * Windows 7+ (32-bit exe, 64-bit sistemlerde de çalışır) ve Linux'ta derlenir.
@@ -455,6 +457,24 @@ static void handle(sock_t s) {
                 respond_json(s, 500, "Error", "{\"error\":\"upload_failed\"}");
             }
         }
+    }
+    else if (strcmp(path, "/api/kapat") == 0 && strcmp(method, "POST") == 0) {
+        char ne[32] = {0};
+        query_param(rawurl, "ne", ne, sizeof ne);
+        int pc = strcmp(ne, "bilgisayar") == 0;
+        respond_json(s, 200, "OK", "{\"ok\":true}");
+        log_msg(pc ? "kapatma: bilgisayar" : "kapatma: uygulama", NULL);
+#ifdef _WIN32
+        Sleep(300);
+        if (pc) WinExec("shutdown /s /t 5", SW_HIDE);
+        WinExec("taskkill /f /im chrome.exe", SW_HIDE);
+        WinExec("taskkill /f /im msedge.exe", SW_HIDE);
+        Sleep(500);
+        free(lower); free(req);
+        exit(0);
+#else
+        (void)pc;
+#endif
     }
     else if (strncmp(path, "/api/", 5) == 0) {
         respond_json(s, 404, "Not Found", "{\"error\":\"unknown\"}");

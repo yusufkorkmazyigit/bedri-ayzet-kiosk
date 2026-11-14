@@ -763,6 +763,18 @@
   }
 
   /* ================================================================ AYARLAR */
+  /* Kiosku kapat: önce bekleyen kayıt gönderilir, sonra sunucu tarayıcıyı (ve istenirse Windows'u) kapatır */
+  function quit(ne, msg, ok) {
+    BA.confirm(msg, { ok: ok, danger: ne === 'bilgisayar' }).then(function (yes) {
+      if (!yes) return;
+      S().save(true);
+      setTimeout(function () {
+        fetch('api/kapat?ne=' + ne, { method: 'POST' }).catch(function () {});
+        BA.toast('Kapatılıyor…');
+      }, 600);
+    });
+  }
+
   PAGES.settings = function (main) {
     var s = S().db.settings;
     var server = S().mode === 'server';
@@ -796,6 +808,11 @@
             '<button class="btn btn--ghost" data-act="import">' + icon('upload') + 'Yedekten geri yükle</button>' +
             '<input type="file" accept="application/json,.json" hidden data-ref="imp"></div>' +
           '</section>' +
+          (server ? '<section class="card"><header class="card__head"><h2>Kiosku kapat</h2></header>' +
+            '<p class="muted">Klavye olmadan çıkmak için. Veriler kaydedilmiş olarak kapanır.</p>' +
+            '<div class="card__foot"><button class="btn btn--ghost" data-act="quitApp">' + icon('logout') + 'Masaüstüne çık</button>' +
+            '<button class="btn btn--ghost btn--danger-ghost" data-act="quitPc">' + icon('close') + 'Bilgisayarı kapat</button></div>' +
+          '</section>' : '') +
         '</div>' +
       '</div>';
 
@@ -826,6 +843,8 @@
           BA.toast('Ayarlar kaydedildi.', 'ok');
           BA.app.go('trainer', { tab: 'settings' });
         },
+        quitApp: function () { quit('uygulama', 'Uygulama ve sunucu kapanacak, masaüstüne dönülecek. Tekrar açmak için BASLAT.bat.', 'Masaüstüne çık'); },
+        quitPc: function () { quit('bilgisayar', 'Bilgisayar birkaç saniye içinde kapanacak.', 'Bilgisayarı kapat'); },
         savePin: function () {
           var f = BA.formData(main.querySelector('[data-ref=pin]'));
           if (BA.hash(f.old) !== s.pinHash) return BA.toast('Mevcut PIN hatalı.', 'err');
