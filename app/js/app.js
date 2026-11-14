@@ -122,10 +122,43 @@
     if (e.ctrlKey && /^[+\-=0pusPUS]$/.test(e.key)) e.preventDefault();
   });
 
+  /* ------------------------------------------------------------ ağ modu: başka cihazdan gelen değişiklik
+     Form, pencere ya da program düzenleyici açıkken uygulanmaz (yarım iş ezilmesin); sonra uygulanır. */
+  BA.store.canApply = function () {
+    if (BA.modal.top()) return false;
+    var a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return false;
+    if (app.view === 'trainer' && (app.params.tab === 'editor' || app.params.tab === 'settings')) return false;
+    return true;
+  };
+  BA.store.onRemote = function () {
+    app.applySettings();
+    if (app.session.role === 'member' && !BA.store.member(app.session.memberId)) { app.logout(); return; }
+    if (app.view === 'trainer' && app.params.id && (app.params.tab === 'member') && !BA.store.member(app.params.id)) {
+      app.go('trainer', { tab: 'members' }); return;
+    }
+    if (!BA.store.canApply()) return;
+    var y = root.scrollTop, sc = root.querySelector('.admin__main, .home, .member__main');
+    var y2 = sc ? sc.scrollTop : 0;
+    app.go(app.view, app.params);
+    root.scrollTop = y;
+    sc = root.querySelector('.admin__main, .home, .member__main');
+    if (sc) sc.scrollTop = y2;
+    var scr = root.firstElementChild;
+    if (scr) scr.classList.remove('enter');
+  };
+
   /* ------------------------------------------------------------ açılış */
   BA.app = app;
   BA.store.load().then(function () {
     app.applySettings();
+    // Eğitmen bilgisayarındaki kısayol ?panel ile açar → doğrudan eğitmen girişi
+    if (/[?&]panel\b/.test(location.search) && BA.views.home) {
+      app.go('home');
+      setTimeout(function () { var b = root.querySelector('[data-act=trainerLogin]'); if (b) b.click(); }, 50);
+      setInterval(tick, 1000);
+      return;
+    }
     app.go('home');
     setInterval(tick, 1000);
   }).catch(function (err) {

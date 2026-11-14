@@ -73,6 +73,14 @@ alınmıştır (kamu malı). Dosyalar `app/img/ex/` klasöründedir.
 Ana menüdeki **Ansiklopedi** butonu kısa okuma yazıları açar. Metinler `app/js/ansiklopedi.js` dosyasındadır;
 yeni yazı eklemek ya da düzeltmek için bu dosyadaki blokları düzenlemek yeterlidir (biçim dosyanın başında anlatılır).
 
+## Eğitmen bilgisayarından yönetmek (ağ modu)
+
+1. Kiosk ağa **kablo ile** bağlanır (modem/switch). Kioskta `AG-MODU-AC.bat` çift tıklanır, yönetici izni onaylanır.
+2. Ekranda bağlantı adresi yazar; klasörde `Bedri Ayzet Panel` kısayolu oluşur. Bu kısayol USB ile eğitmen bilgisayarının masaüstüne kopyalanır.
+3. Kısayol Chrome/Edge ile eğitmen girişini açar. Adla açılmazsa adres çubuğuna kioskun IP adresi yazılır: `http://192.168.0.X:8765/?panel` (IP'nin değişmemesi için modemden kiosk için sabit IP ayrılması önerilir).
+
+Veriler yine yalnızca kioskta tutulur; eğitmen bilgisayarına bir şey kurulmaz. Kiosk kapalıysa panel açılmaz. Kapatmak için `AG-MODU-KAPAT.bat`.
+
 ## Kiosku kapatmak
 
 Kiosk modunda kapatma tuşu yoktur. Klavye varsa **Alt+F4**, ardından `KAPAT.bat`.
@@ -99,7 +107,7 @@ Eski klasörü silmeyin: betik yalnızca program dosyalarını yeniler, `data/` 
 
 ## Güvenlik notları
 
-- Sunucu yalnızca `127.0.0.1`'i dinler; ağdan erişilemez.
+- Sunucu varsayılan olarak yalnızca `127.0.0.1`'i dinler. Ağ modu açıksa yalnızca yerel ağ adreslerinden (192.168.x.x, 10.x.x.x, 172.16–31.x.x) bağlantı kabul eder; internetten erişilemez. Kiosku kapatma komutu yalnızca kioskun kendisinden çalışır.
 - Üye ve eğitmen oturumları hareketsizlikte otomatik kapanır (süreler Ayarlar'dan değişir).
 - Eğitmen PIN'i 5 hatalı denemeden sonra 60 sn kilitlenir. Varsayılan PIN (1234) değiştirilmediği sürece eğitmen panelinde uyarı görünür.
 - Üye girişi yalnızca üye numarasıyla yapılır; bu tasarım gereği kolaylık içindir, hassas veri tutulmamalıdır.

@@ -1,3 +1,3 @@
 /* Bu dosya paketleme sırasında VERSION dosyasından yeniden yazılır. */
 window.BA = window.BA || {};
-window.BA.VERSION = '1.8.1';
+window.BA.VERSION = '1.9.0';

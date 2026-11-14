@@ -12,6 +12,11 @@
     mode: 'local',
     videos: null,          // sunucu modunda mevcut video dosyaları (Set benzeri obje), yerelde null
     dirty: false,
+    srvRev: null,          // sunucudaki veri sürümü (ağ modunda eşzamanlı düzenleme için)
+    lan: false,            // sunucu ağ modunda mı (başka cihazlar da yazabilir)
+    local: true,           // bu tarayıcı sunucuyla aynı bilgisayarda mı
+    onRemote: null,        // başka cihazdan gelen değişiklik uygulandığında çağrılır
+    canApply: null,        // false dönerse (form/düzenleyici açık) uzak değişiklik bekletilir
     rev: 0,                // her kayıtta artar; türetilmiş önbellekler (kod dizini) buna bakar
     _failNotified: false
   };
@@ -76,6 +81,7 @@
     if (location.protocol === 'file:') return Promise.resolve(loadLocal());
     return fetch('api/db', { cache: 'no-store' }).then(function (r) {
       store.mode = 'server';
+      readRev(r);
       if (r.status === 404) {
         // İlk çalıştırma: varsa localStorage'daki veriyi taşı, yoksa başlangıç verisi
         store.db = normalize(lsGet());
@@ -83,13 +89,70 @@
         return;
       }
       if (!r.ok) throw new Error('db ' + r.status);
-      return r.json().then(function (db) { store.db = normalize(db); lsSet(store.db); });
+      return r.json().then(function (db) { store.db = normalize(db); base = snap(store.db); lsSet(store.db); });
     }).catch(function () {
       if (store.mode !== 'server') return loadLocal();
       // sunucu var ama veri okunamadı → yedekten devam
       store.db = normalize(lsGet());
+    }).then(function () {
+      if (store.mode !== 'server') return;
+      return fetch('api/ping', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (p) {
+        store.lan = !!p.lan; store.local = p.local !== false; store.host = p.host || '';
+        if (store.lan) setInterval(poll, 4000);
+      }).catch(function () {});
     }).then(function () { return store.refreshVideos(); });
   };
+
+  /* ------------------------------------------------------------ ağ modu: sürüm, birleştirme, yoklama
+     Her cihaz son eşitlendiği hali (base) kayıt kayıt tutar. Sunucu "başka biri kaydetti" (409) derse
+     yerel ve sunucu halleri base'e göre üç yönlü birleştirilir: yalnız bir tarafta değişen kayıt o taraftan,
+     iki tarafta da değişen kayıt bu cihazdan (son kaydeden) alınır; eklenen/silinen kayıtlar korunur. */
+  var base = null;
+  var COLS = ['members', 'templates', 'exercises'];
+  function readRev(r) { var v = r.headers.get('X-Rev'); if (v != null) store.srvRev = +v; }
+  function snap(db) {
+    var o = { settings: JSON.stringify(db.settings) };
+    COLS.forEach(function (c) { var m = {}; (db[c] || []).forEach(function (x) { m[x.id] = JSON.stringify(x); }); o[c] = m; });
+    return o;
+  }
+  function merge(loc, srv, b) {
+    var out = normalize(JSON.parse(JSON.stringify(srv)));
+    if (!b) return loc;
+    COLS.forEach(function (c) {
+      var L = {}, S = {}, res = [], seen = {};
+      (loc[c] || []).forEach(function (x) { L[x.id] = x; });
+      (out[c] || []).forEach(function (x) { S[x.id] = x; });
+      function pick(id) {
+        if (seen[id]) return; seen[id] = 1;
+        var l = L[id], s = S[id], bj = b[c][id], lj = l && JSON.stringify(l), sj = s && JSON.stringify(s);
+        if (l && s) res.push(lj === bj ? s : l);                 // yerelde değişmediyse sunucudaki, değiştiyse yerel
+        else if (l) { if (!bj || lj !== bj) res.push(l); }       // yeni eklendi ya da sunucuda silinmiş ama burada düzenlenmiş
+        else if (s) { if (!bj || sj !== bj) res.push(s); }       // sunucuda yeni ya da burada silinmiş ama orada düzenlenmiş
+      }
+      (out[c] || []).forEach(function (x) { pick(x.id); });
+      (loc[c] || []).forEach(function (x) { pick(x.id); });
+      out[c] = res;
+    });
+    if (JSON.stringify(loc.settings) !== b.settings) out.settings = loc.settings;
+    out.catalogVersion = Math.max(loc.catalogVersion || 0, out.catalogVersion || 0);
+    return out;
+  }
+  /* Başka cihaz kaydettiyse (ve burada bekleyen değişiklik yoksa) yeni veriyi sessizce al */
+  function poll() {
+    if (inflight || store.dirty || document.hidden || (store.canApply && !store.canApply())) return;
+    fetch('api/rev', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+      if (j.rev === store.srvRev || inflight || store.dirty) return;
+      return fetch('api/db', { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) return;
+        readRev(r);
+        return r.json().then(function (db) {
+          if (inflight || store.dirty || (store.canApply && !store.canApply())) return;
+          store.db = normalize(db); base = snap(store.db); store.rev++; lsSet(store.db);
+          if (store.onRemote) store.onRemote();
+        });
+      });
+    }).catch(function () {});
+  }
 
   function loadLocal() {
     store.mode = 'local';
@@ -107,13 +170,21 @@
     if (inflight) { pending = true; return; }
     inflight = true;
     store.dirty = false;
+    var sent = snap(store.db);
+    var headers = { 'Content-Type': 'application/json' };
+    if (store.srvRev != null) headers['X-Rev'] = String(store.srvRev);
     fetch('api/db', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(store.db)
     }).then(function (r) {
+      if (r.status === 409) return resolveConflict();
       if (!r.ok) throw new Error('save ' + r.status);
-      if (store._failNotified) { store._failNotified = false; BA.toast('Bağlantı düzeldi, veriler kaydedildi.', 'ok'); }
+      return r.json().then(function (j) {
+        if (j.rev != null) store.srvRev = j.rev;
+        base = sent;
+        if (store._failNotified) { store._failNotified = false; BA.toast('Bağlantı düzeldi, veriler kaydedildi.', 'ok'); }
+      });
     }).catch(function () {
       store.dirty = true;
       if (!store._failNotified) {
@@ -127,6 +198,21 @@
     });
   }
   var flushSoon = BA.debounce(flush, 350);
+
+  /* 409: sunucudaki güncel hali al, birleştir, bir sonraki turda yeniden yaz */
+  function resolveConflict() {
+    return fetch('api/db', { cache: 'no-store' }).then(function (r) {
+      readRev(r);
+      return r.json();
+    }).then(function (srv) {
+      store.db = merge(store.db, srv, base);
+      base = snap(normalize(JSON.parse(JSON.stringify(srv))));
+      store.rev++;
+      store.dirty = true;
+      pending = true;            // finally bloğunda yeniden flush
+      if (store.onRemote) store.onRemote();
+    });
+  }
 
   store.save = function (now) {
     store.rev++;

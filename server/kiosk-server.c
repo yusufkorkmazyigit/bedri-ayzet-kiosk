@@ -10,7 +10,9 @@
  *  - /api/kapat   : POST ?ne=uygulama → tarayıcıyı ve sunucuyu kapatır; ?ne=bilgisayar → Windows'u kapatır
  *                   (yalnızca bu bilgisayardan; arayüzde eğitmen PIN'iyle korunur)
  *
- * Yalnızca 127.0.0.1'e bağlanır; dışarıdan erişilemez.
+ * Varsayılan: yalnızca 127.0.0.1 (bu bilgisayar). data/ag-acik dosyası varsa (AG-MODU-AC.bat oluşturur)
+ * salon ağına da açılır; yine de yalnızca özel ağ adreslerinden (192.168.x.x, 10.x, 172.16–31.x) istek kabul edilir.
+ * Eşzamanlı düzenleme: her kayıtta sürüm (rev) artar; istemci eski sürümle yazarsa 409 döner ve istemci birleştirip yeniden dener.
  * Windows 7+ (32-bit exe, 64-bit sistemlerde de çalışır) ve Linux'ta derlenir.
  *
  * Derleme:
@@ -59,6 +61,10 @@
 #define IO_CHUNK       65536
 
 static FILE *g_log = NULL;
+
+static int  g_lan = 0;          /* ağ modu açık mı */
+static long g_rev = 1;          /* db sürümü (her başarılı kayıtta +1, data/db.rev'de saklanır) */
+static char g_host[64] = "";
 
 /* db.json okuma/değiştirme kilidi + benzersiz geçici dosya sayacı */
 #ifdef _WIN32
@@ -200,6 +206,29 @@ static void respond(sock_t s, int code, const char *status, const char *type, co
         code, status, type, (long long)len);
     send_all(s, h, n);
     if (len > 0) send_all(s, body, len);
+}
+
+/* Ek başlıklı yanıt (ör. X-Rev) */
+static void respond_hdr(sock_t s, int code, const char *status, const char *type, const char *extra, const char *body, off64 len) {
+    char h[640];
+    int n = snprintf(h, sizeof h,
+        "HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %lld\r\n%s"
+        "Cache-Control: no-store\r\nConnection: close\r\n\r\n",
+        code, status, type, (long long)len, extra ? extra : "");
+    send_all(s, h, n);
+    if (len > 0) send_all(s, body, len);
+}
+
+static void save_rev(void) {
+    FILE *f = fopen("data/db.rev", "wb");
+    if (f) { fprintf(f, "%ld", g_rev); fclose(f); }
+}
+
+/* İstemci adresi (ana bilgisayar sırası): yerel mi, özel ağ mı */
+static int ip_local(unsigned long ip) { return (ip >> 24) == 127; }
+static int ip_private(unsigned long ip) {
+    unsigned a = (unsigned)(ip >> 24) & 255, b = (unsigned)(ip >> 16) & 255;
+    return a == 10 || (a == 172 && b >= 16 && b <= 31) || (a == 192 && b == 168) || (a == 169 && b == 254);
 }
 
 static void respond_json(sock_t s, int code, const char *status, const char *json) {
@@ -358,7 +387,9 @@ static void list_videos(sock_t s) {
 
 /* ---------------------------------------------------------------- istek işleme */
 
-static void handle(sock_t s) {
+static void handle(sock_t s, unsigned long peer) {
+    int local = ip_local(peer);
+    if (!local && !(g_lan && ip_private(peer))) return;   /* dış ağdan gelen istek: yanıtsız kapat */
     char *req = (char *)malloc(MAX_HEADER + 1);
     if (!req) return;
     int got = 0, hdr_end = -1;
@@ -399,13 +430,32 @@ static void handle(sock_t s) {
     }
     /* ---- API ---- */
     else if (strcmp(path, "/api/ping") == 0) {
-        respond_json(s, 200, "OK", "{\"ok\":true}");
+        char js[200];
+        snprintf(js, sizeof js, "{\"ok\":true,\"local\":%s,\"lan\":%s,\"rev\":%ld,\"host\":\"%s\"}",
+            local ? "true" : "false", g_lan ? "true" : "false", g_rev, g_host);
+        respond_json(s, 200, "OK", js);
+    }
+    else if (strcmp(path, "/api/rev") == 0) {
+        char js[64];
+        snprintf(js, sizeof js, "{\"rev\":%ld}", g_rev);
+        respond_json(s, 200, "OK", js);
     }
     else if (strcmp(path, "/api/db") == 0 && strcmp(method, "GET") == 0) {
         DB_LOCK();
-        if (file_size("data/db.json") < 0) respond_json(s, 404, "Not Found", "{\"error\":\"empty\"}");
-        else send_file(s, "data/db.json", NULL, 0, 0);
+        off64 sz = file_size("data/db.json");
+        char *buf = NULL; size_t rd = 0;
+        if (sz >= 0 && sz <= MAX_DB_BYTES && (buf = (char *)malloc((size_t)sz + 1)) != NULL) {
+            FILE *f = fopen("data/db.json", "rb");
+            if (f) { rd = fread(buf, 1, (size_t)sz, f); fclose(f); }
+        }
+        long rev = g_rev;
         DB_UNLOCK();
+        char xh[48];
+        snprintf(xh, sizeof xh, "X-Rev: %ld\r\n", rev);
+        if (sz < 0) respond_hdr(s, 404, "Not Found", "application/json; charset=utf-8", xh, "{\"error\":\"empty\"}", 17);
+        else if (!buf) respond_json(s, 500, "Error", "{\"error\":\"read\"}");
+        else respond_hdr(s, 200, "OK", "application/json; charset=utf-8", xh, buf, (off64)rd);
+        free(buf);
     }
     else if (strcmp(path, "/api/db") == 0 && strcmp(method, "PUT") == 0) {
         if (content_len <= 0 || content_len > MAX_DB_BYTES) respond_json(s, 413, "Too Large", "{\"error\":\"size\"}");
@@ -418,14 +468,24 @@ static void handle(sock_t s) {
                 FILE *chk = fopen(tmp, "rb");
                 int first = chk ? fgetc(chk) : EOF;
                 if (chk) fclose(chk);
-                int ok = 0;
+                int ok = 0, conflict = 0;
+                long base = -1, rev = 0;
+                char *xr = strstr(lower, "\r\nx-rev:");
+                if (xr) base = strtol(xr + 9, NULL, 10);
                 if (first == '{') {
                     DB_LOCK();
-                    daily_backup();
-                    ok = replace_file(tmp, "data/db.json") == 0;
+                    if (base >= 0 && base != g_rev) conflict = 1;   /* başka bir cihaz arada kaydetmiş */
+                    else {
+                        daily_backup();
+                        ok = replace_file(tmp, "data/db.json") == 0;
+                        if (ok) { g_rev++; save_rev(); }
+                    }
+                    rev = g_rev;
                     DB_UNLOCK();
                 }
-                if (ok) respond_json(s, 200, "OK", "{\"ok\":true}");
+                char js[80];
+                if (ok) { snprintf(js, sizeof js, "{\"ok\":true,\"rev\":%ld}", rev); respond_json(s, 200, "OK", js); }
+                else if (conflict) { remove(tmp); snprintf(js, sizeof js, "{\"error\":\"conflict\",\"rev\":%ld}", rev); respond_json(s, 409, "Conflict", js); }
                 else { remove(tmp); respond_json(s, 400, "Bad Request", "{\"error\":\"invalid\"}"); }
             } else {
                 remove(tmp);
@@ -457,6 +517,9 @@ static void handle(sock_t s) {
                 respond_json(s, 500, "Error", "{\"error\":\"upload_failed\"}");
             }
         }
+    }
+    else if (strcmp(path, "/api/kapat") == 0 && strcmp(method, "POST") == 0 && !local) {
+        respond_json(s, 403, "Forbidden", "{\"error\":\"local_only\"}");
     }
     else if (strcmp(path, "/api/kapat") == 0 && strcmp(method, "POST") == 0) {
         char ne[32] = {0};
@@ -503,8 +566,11 @@ static unsigned __stdcall worker(void *arg) {
 #else
 static void *worker(void *arg) {
 #endif
-    sock_t s = (sock_t)(size_t)arg;
-    handle(s);
+    struct conn { sock_t s; unsigned long ip; } *c = arg;
+    sock_t s = c->s;
+    unsigned long ip = c->ip;
+    free(c);
+    handle(s, ip);
 #ifdef _WIN32
     shutdown(s, SD_SEND);
 #else
@@ -546,6 +612,10 @@ int main(int argc, char **argv) {
 #else
     signal(SIGPIPE, SIG_IGN);
 #endif
+    g_lan = file_size("data/ag-acik") >= 0;
+    { FILE *f = fopen("data/db.rev", "rb"); if (f) { if (fscanf(f, "%ld", &g_rev) != 1 || g_rev < 1) g_rev = 1; fclose(f); } }
+    if (gethostname(g_host, sizeof g_host) != 0) g_host[0] = 0;
+    for (char *h = g_host; *h; h++) if (*h == '"' || *h == '\\') *h = '-';
 
     sock_t ls = socket(AF_INET, SOCK_STREAM, 0);
     if (ls == INVALID_SOCKET) return 1;
@@ -557,24 +627,33 @@ int main(int argc, char **argv) {
     memset(&addr, 0, sizeof addr);
     addr.sin_family = AF_INET;
     addr.sin_port = htons((unsigned short)port);
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_addr.s_addr = g_lan ? htonl(INADDR_ANY) : inet_addr("127.0.0.1");
     if (bind(ls, (struct sockaddr *)&addr, sizeof addr) != 0 || listen(ls, 32) != 0) {
         /* port doluysa büyük ihtimalle sunucu zaten çalışıyor → sessizce çık */
         log_msg("port kullanimda, cikiliyor%s", "");
         return 0;
     }
-    log_msg("sunucu basladi%s", "");
+    log_msg(g_lan ? "sunucu basladi (ag modu acik)%s" : "sunucu basladi%s", "");
 
     for (;;) {
-        sock_t c = accept(ls, NULL, NULL);
-        if (c == INVALID_SOCKET) continue;
+        struct sockaddr_in pa;
 #ifdef _WIN32
-        HANDLE th = (HANDLE)_beginthreadex(NULL, 256 * 1024, worker, (void *)(size_t)c, 0, NULL);
-        if (th) CloseHandle(th); else CLOSESOCK(c);
+        int pl = sizeof pa;
+#else
+        socklen_t pl = sizeof pa;
+#endif
+        sock_t c = accept(ls, (struct sockaddr *)&pa, &pl);
+        if (c == INVALID_SOCKET) continue;
+        struct conn { sock_t s; unsigned long ip; } *cc = malloc(sizeof *cc);
+        if (!cc) { CLOSESOCK(c); continue; }
+        cc->s = c; cc->ip = (unsigned long)ntohl(pa.sin_addr.s_addr);
+#ifdef _WIN32
+        HANDLE th = (HANDLE)_beginthreadex(NULL, 256 * 1024, worker, cc, 0, NULL);
+        if (th) CloseHandle(th); else { CLOSESOCK(c); free(cc); }
 #else
         pthread_t th;
-        if (pthread_create(&th, NULL, worker, (void *)(size_t)c) == 0) pthread_detach(th);
-        else CLOSESOCK(c);
+        if (pthread_create(&th, NULL, worker, cc) == 0) pthread_detach(th);
+        else { CLOSESOCK(c); free(cc); }
 #endif
     }
     return 0;

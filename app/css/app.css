@@ -1081,3 +1081,4 @@ html.oldchrome .tiles--col { display: flex; flex-direction: column; }
 .hero--quote blockquote { flex: 1; min-width: 0; }
 .hero__lib { flex: none; margin-left: 1rem; height: 2.9rem; }
 .hero__lib .ico { color: var(--acc); }
+.netaddr code { font-size: 1.15rem; padding: .35rem .6rem; display: inline-block; user-select: all; }

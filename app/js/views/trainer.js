@@ -19,7 +19,7 @@
     root.innerHTML = '<div class="screen">' +
       BA.topbar((warns.length ? '<button class="btn btn--warn" data-act="warns">' + icon('alert') + '<span>' + warns.length + ' uyarı</span></button>' : '') +
         '<button class="btn btn--ghost" data-act="logout">' + icon('logout') + '<span>Çıkış</span></button>',
-        '<div class="greet"><b>Eğitmen Paneli</b><span>' + (S().mode === 'server' ? 'Veriler bu bilgisayara kaydediliyor' : 'Yerel tarayıcı modu') + '</span></div>') +
+        '<div class="greet"><b>Eğitmen Paneli</b><span>' + (S().mode !== 'server' ? 'Yerel tarayıcı modu' : S().local ? 'Veriler bu bilgisayara kaydediliyor' : 'Ağ üzerinden · veriler kioska kaydediliyor') + '</span></div>') +
       '<div class="admin">' +
         '<nav class="side">' + NAV.map(function (n) {
           return '<button class="side__item' + (n.id === navOn ? ' is-on' : '') + '" data-act="nav" data-tab="' + n.id + '">' + icon(n.icon) + '<span>' + n.label + '</span></button>';
@@ -763,6 +763,24 @@
   }
 
   /* ================================================================ AYARLAR */
+  /* Ağ modu durumu: eğitmen bilgisayarından panel adresi */
+  function netCard() {
+    var st = S(), port = location.port || '8765';
+    var host = st.host || 'KIOSK-PC';
+    var url = 'http://' + host + ':' + port + '/?panel';
+    var body = !st.local ?
+      '<p class="muted">Bu ekran kiosktan ağ üzerinden açıldı. Yapılan değişiklikler kioska anında kaydedilir; ' +
+        'kiosk aynı anda kullanılıyorsa iki taraftaki değişiklikler birleştirilir.</p>' :
+      st.lan ?
+      '<p class="muted">Ağ modu <b>açık</b>. Aynı ağdaki eğitmen bilgisayarından tarayıcıda şu adres açılır:</p>' +
+        '<p class="netaddr"><code>' + BA.esc(url) + '</code></p>' +
+        '<p class="muted">Ad çalışmazsa bilgisayar adı yerine kioskun IP adresi yazılır (ör. <code>http://192.168.0.50:' + port + '/?panel</code>). ' +
+        'Kapatmak için kiosk klasöründeki <code>AG-MODU-KAPAT.bat</code>.</p>' :
+      '<p class="muted">Ağ modu <b>kapalı</b>: panel yalnızca bu kiosktan açılır. Eğitmen bilgisayarından da yönetmek için ' +
+        'kiosk klasöründeki <code>AG-MODU-AC.bat</code> dosyasını çalıştırın.</p>';
+    return '<section class="card"><header class="card__head"><h2>Eğitmen bilgisayarı (ağ)</h2></header>' + body + '</section>';
+  }
+
   /* Kiosku kapat: önce bekleyen kayıt gönderilir, sonra sunucu tarayıcıyı (ve istenirse Windows'u) kapatır */
   function quit(ne, msg, ok) {
     BA.confirm(msg, { ok: ok, danger: ne === 'bilgisayar' }).then(function (yes) {
@@ -808,7 +826,8 @@
             '<button class="btn btn--ghost" data-act="import">' + icon('upload') + 'Yedekten geri yükle</button>' +
             '<input type="file" accept="application/json,.json" hidden data-ref="imp"></div>' +
           '</section>' +
-          (server ? '<section class="card"><header class="card__head"><h2>Kiosku kapat</h2></header>' +
+          (server ? netCard() : '') +
+          (server && S().local ? '<section class="card"><header class="card__head"><h2>Kiosku kapat</h2></header>' +
             '<p class="muted">Klavye olmadan çıkmak için. Veriler kaydedilmiş olarak kapanır.</p>' +
             '<div class="card__foot"><button class="btn btn--ghost" data-act="quitApp">' + icon('logout') + 'Masaüstüne çık</button>' +
             '<button class="btn btn--ghost btn--danger-ghost" data-act="quitPc">' + icon('close') + 'Bilgisayarı kapat</button></div>' +

@@ -3,6 +3,13 @@
 Sürüm numaraları `ANA.KÜÇÜK.YAMA` biçimindedir: yama = hata düzeltmesi, küçük = yeni özellik,
 ana = veri yapısını etkileyen büyük değişiklik.
 
+## [1.9.0] - 2026-11-15
+
+### Eklendi
+- **Ağ modu (eğitmen bilgisayarı):** kiosktaki `AG-MODU-AC.bat` çalıştırılınca eğitmen paneli aynı ağdaki başka bir bilgisayardan tarayıcıyla açılabilir (`http://KIOSK-PC:8765/?panel`). Kurulum gerektirmez; betik masaüstü kısayolunu da hazırlar. `AG-MODU-KAPAT.bat` ile kapatılır. Yalnızca yerel ağ adresleri (192.168.x.x vb.) bağlanabilir; kiosku kapatma komutu yalnızca kioskun kendisinden çalışır.
+- **Eşzamanlı düzenleme:** kiosk ve eğitmen bilgisayarı aynı anda kullanılırsa değişiklikler kayıt kayıt birleştirilir; biri diğerinin kaydını ezmez. Başka cihazdaki değişiklik birkaç saniye içinde ekrana gelir (açık form ya da program düzenleyici varsa, kapanınca).
+- Ayarlar'da "Eğitmen bilgisayarı (ağ)" kartı: ağ modunun durumu ve bağlantı adresi.
+
 ## [1.8.1] - 2026-11-15
 
 ### Eklendi
